@@ -1,0 +1,20 @@
+# depslib dependency file v1.0
+1614044321 source:c:\users\agils\desktop\2420 data structs\11.4_lab\missionariescannibalstester.cpp
+	<iostream>
+	<string>
+	<vector>
+	"Graph.h"
+	"MC.h"
+
+1614044796 c:\users\agils\desktop\2420 data structs\11.4_lab\include\graph.h
+	<iostream>
+	<memory>
+	<vector>
+	<stack>
+
+1614035669 c:\users\agils\desktop\2420 data structs\11.4_lab\include\mc.h
+	"GameState.h"
+
+1614035351 c:\users\agils\desktop\2420 data structs\11.4_lab\include\gamestate.h
+	<iostream>
+
