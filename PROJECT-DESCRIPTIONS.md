@@ -26,3 +26,8 @@ C++:
 Java:
 
   DataVisualization: In this project I created a binary search tree using Java rather than C++. I also coded a simple GUI that allows the user to select certain nodes on the tree, delete certain nodes, and insert new nodes.
+  
+
+JavaScript:
+
+  ScoutingServer: This file contains code for a server taht I wrote in the file main.js. The purpose of this server is to receive data from an app that I created to assist in the scouting process of FRC competitions. The server receives data sent from devices using the app, and writes it to a CSV file to be used by another program that will interpret the data.
