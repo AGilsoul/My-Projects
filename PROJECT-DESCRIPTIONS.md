@@ -20,7 +20,7 @@ C++:
   
   Hashtable: This is a simple hashtable program that makes use of smart pointers to create a hashtable that sorts a specified number of random strings based on the first character in the string, which leads to improved search time over a basic array. The program creates the random strings and then displays the hashtable in the console.
   
-  11.1_NoBrainer: This is where I originally coded my graph object and graph traversal methods. Like the above program, running the program will only show the test results, and the Graph.h file shows most of the code worth looking at.
+  11.1_NoBrainer: This is where I originally coded my graph object and graph traversal methods. Running the program will only show the test results, and the Graph.h file shows most of the code worth looking at.
   
   
 Java:
