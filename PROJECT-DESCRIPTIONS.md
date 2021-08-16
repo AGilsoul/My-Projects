@@ -11,10 +11,6 @@ C++:
   
   1410(FinalProject): In this project, I made a command line program that utilized a CSV file containing all production cars sold in the United States in 2020 to find the best car for a user to fit their needs based on certain preferances such as build, mileage, drivetrain, and so on. It implements a selection sort to sort cars based on horsepower, mileage, and price. The user is greated by a menu from which they can filter the list, sort the list, and do a google search for the cars currently in the list.
   
-  Hashtable: This is a simple hashtable program that makes use of smart pointers to create a hashtable that sorts a specified number of random strings based on the first character in the string, which leads to improved search time over a basic array. The program creates the random strings and then displays the hashtable in the console.
-  
-  11.1_NoBrainer: This is where I originally coded my graph object and graph traversal methods. Running the program will only show the test results, and the Graph.h file shows most of the code worth looking at.
-  
   
  Python:
 
