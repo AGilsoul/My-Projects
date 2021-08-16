@@ -52,156 +52,7 @@ void Robot::RobotInit() {
   pot = new frc::AnalogPotentiometer(4);
 }
 
-
-//swerve drive nonsense
 using namespace std;
-//each wheel is a WheelBro class
-class WheelBro{
-    private:
-        //creates pointers for motors, PID controllers, and encoders
-        frc::Talon *angleMotor;
-        WPI_TalonSRX *speedMotor; //change to a WPI_TalonSRX for CAN I think
-        frc2::PIDController *bruhcontroller;
-        frc::AnalogInput *encoeds;
-
-        //max voltage each encoder can return?
-        const double MAX_VOLTS = 5;
-
-    public:
-        WheelBro(int angleMotor, int speedMotor, int encoder){
-            //sets the angle Motor to the specific Talon it is connected to
-            this->angleMotor = new frc::Talon(angleMotor);
-
-            //sets the encoder, similar to a potentiometer but doesn't directly return angles
-            this->encoeds = new frc::AnalogInput(encoder);
-
-            //sets the wheel motor that is used for controlling speed
-            this->speedMotor = new WPI_TalonSRX(speedMotor); //this should be WPI_TalonSRX I think
-
-            //creates a new Proportion, Integral, Derivative controller with three PID values
-            this->bruhcontroller = new frc2::PIDController(.8, .2, 0);
-        }
-
-        //speed and angle of each wheel are sent here
-        void drive(double speed, double angle){
-            //sets the speed of the motor
-            this->speedMotor->Set(speed);
-
-            //sets angle of the wheel
-            //If robot goes backwards change + to -. this->MAX_VOLTS*0.25 is the offset angle (90 degrees, because thats 1/4 of the max.)
-            double setpoint = angle*(this->MAX_VOLTS*0.5)+this->MAX_VOLTS*0.23; 
-            
-            //These statements are for adjusting the angle of the wheels
-            if(abs(setpoint-this->encoeds->GetVoltage())<abs(setpoint+this->MAX_VOLTS-this->encoeds->GetVoltage())){
-              //this->angleMotor->Set(.2*(setpoint-this->encoeds->GetVoltage()));
-              this->angleMotor->Set(this->bruhcontroller->Calculate(this->encoeds->GetVoltage(), setpoint));
-            }
-            else{ 
-              this->angleMotor->Set(this->bruhcontroller->Calculate(this->encoeds->GetVoltage()-MAX_VOLTS, setpoint));
-            }
-        }
-};
-
-
-class SpinnyBoi{
-    private:
-        //creates new WheelBro objects for each motor
-        WheelBro *backRight;
-        WheelBro *backLeft;
-        WheelBro *frontRight;
-        WheelBro *frontLeft;
-        double speed_coef[2] = {.5, 1};
-        int turbo = 0;
-    public:
-        //Length and width of wheelbase
-        const double L = 20+11/16;
-        const double W = 25+7/16;
-        SpinnyBoi(WheelBro *backRight, WheelBro *backLeft, WheelBro *frontRight, WheelBro *frontLeft){
-            this->backRight = backRight;
-            this->backLeft = backLeft;
-            this->frontRight = frontRight;
-            this->frontLeft = frontLeft;
-        }
-
-        //checks to see if controller input is within range of the deadband (.25)
-        //if it is, then it won't return anything, if not, it returns the 1/2 of the input received
-        double deadband(double input){
-          if (abs(input) <= .25){
-            return 0;
-        
-          }
-          else{
-            return input*.5;
-          }
-        }
-
-        //moovmint takes controller input, x1 and y1 from strafing joystick
-        //x2 from rotation joystick, and bool butt determines when to speed up
-        void moovmint(double x1, double y1, double x2, bool butt){
-            //pythagorean theorem of length and width to get diagonal of wheelbase
-            double r = sqrt((L * L) + (W * W));
-
-            //if boost button is pressed, adds one to turbo, making the speed the 1st index(2nd position) of the speed_coef array
-            if(butt){
-              turbo += 1;
-              turbo = remainder(turbo, 2);
-            }
-
-            //changes y1 to a negative value
-            y1 *= -1;
-
-            //double [letter] = strafing value[x1] +/- rotation value[x2] * (length / diagonal)
-            double a = x1-x2*(L/r); 
-            double b = x1+x2*(L/r);
-
-            //double [letter] = strafing value[y1] +/- rotation value[x2] * (width / diagonal)
-            double c = y1-x2*(W/r);
-            double d = y1+x2*(W/r);
-
-           //letters from above input values
-
-           //Speed of back right motor is the negative result of using the pythagorean theorem on b and d
-            double backRightSpeed = -sqrt((b*b)+(d*d));
-            //Speed of back left motor is the result of using the pythagorean theorem on a and d
-            double backLeftSpeed = sqrt((a*a)+(d*d));
-            //Speed of front right motor is the negative result of using the pythagorean theorem on b and c
-            double frontRightSpeed = -sqrt((b*b)+(c*c));
-            //Speed of front left motor is the result of using the pythagorean theorem on a and c
-            double frontLeftSpeed = sqrt((a*a)+(c*c));
-
-            //angle of back right wheel is the arctangent of b and d divided by pi
-            double backRightAngle = atan2(b, d)/M_PI;
-            //angle of back left wheel is the arctangent of a and d divided by pi
-            double backLeftAngle = atan2(a, d)/M_PI;
-            //angle of back right wheel is the arctangent of b and c divided by pi
-            double frontRightAngle = atan2(b, c)/M_PI;
-            //angle of back right wheel is the arctangent of a and c divided by pi
-            double frontLeftAngle = atan2(a, c)/M_PI;
-
-            //Sends speeds, multiplied by the specific value in the speed_coef array that turbo is the position of, and the corresponding angles to the drive method
-            this->backRight->drive(backRightSpeed*speed_coef[turbo], backRightAngle);
-            this->backLeft->drive(backLeftSpeed*speed_coef[turbo], backLeftAngle);
-            this->frontRight->drive(frontRightSpeed*speed_coef[turbo], frontRightAngle);
-            this->frontLeft->drive(frontLeftSpeed*speed_coef[turbo], frontLeftAngle);
-        }
-
-        //method for tank drive, sets angles all equal to zero, which wheels all facing straight forward
-        void taenck(double y1, double y2){
-            this->backRight->drive(y2, 0);
-            this->backLeft->drive(y1, 0);
-            this->frontRight->drive(y2, 0);
-            this->frontLeft->drive(y1, 0);
-        }
-};
-
-
-//Creates WheelBro objects for each wheel, with their corresponding motor and encoder numbers
-WheelBro *backRight = new WheelBro(5, 3, 3); //change these numbers to: swervy rotatey motor id, movey motor id, encoder id, second encoder id
-WheelBro *backLeft = new WheelBro(3, 2, 1); //change these numbers to: swervy rotatey motor id, movey motor id, encoder id, second encoder id
-WheelBro *frontRight = new WheelBro(4, 4, 2); //change these numbers to: swervy rotatey motor id, movey motor id, encoder id, second encoder id
-WheelBro *frontLeft = new WheelBro(0, 1, 0); //change these numbers to: swervy rotatey motor id, movey motor id, encoder id, second encoder id
-SpinnyBoi spinnyBoi(backRight, backLeft, frontRight, frontLeft);
-//end of swerve drive nonsense
 
 
 void Robot::RobotPeriodic() {}
@@ -222,44 +73,6 @@ void Robot::AutonomousInit() {
 
 //Initialization for the Teleop section(Empty)
 void Robot::TeleopInit() {}
-
-string colorbrochangero(string color){
-  string colors[] = {"Y", "B", "G", "R"};
-  int n = sizeof(colors)/sizeof(colors[0]);
-  int ind = std::distance(colors, find(colors, colors+n, color));
-  int newind = remainder(ind+2, n);
-
-  while(newind < 0){
-    newind += n;
-  }
-  string out = colors[newind];
-  return out;
-}
-/*
-map<frc::Color, string> culir2lettr = {
-    {kBlueTarget, "B"},
-    {kGreenTarget, "G"},
-    {kRedTarget, "R"},
-    {kYellowTarget, "Y"}
-};
-*/
-//map<frc::Color, string> culir2lettr; a dictionary would make converting frc colors to strings a lot easier but it didnt want to work
-//returns a string based on the color detected
-string culir2lettr(frc::Color color){
-    if(color==kBlueTarget){
-      return "B";
-    }
-    else if(color==kGreenTarget){
-      return "G";
-    }
-    else if(color==kRedTarget){
-      return "R";
-    }
-    else if(color==kYellowTarget){
-      return "Y";
-    } //WHY do cpp switch statements only work for ints?
-    return "N";
-}
 
 //Most of these are variables used for autonomous/teleop periodic
 static constexpr auto i2cPort = frc::I2C::Port::kOnboard;
@@ -419,18 +232,6 @@ void Robot::AutonomousPeriodic() {
 
 
 void Robot::TeleopPeriodic(){
-  //cout << pot->PIDGet() << endl;
-  spinnyBoi.moovmint(spinnyBoi.deadband(joystick->GetRawAxis(1)), spinnyBoi.deadband(joystick->GetRawAxis(0)), spinnyBoi.deadband(joystick->GetRawAxis(4)), DebouncerT->get());
-  //spinnyBoi.taenck(joystick->GetRawAxis(0), joystick->GetRawAxis(5));
-  //merged operator code begins here
-
-  //section for the intake, checks to see if certain buttons are pressed
-  if(DebouncerA->get()){
-      Button1Pushed = remainder((Button1Pushed + 1), 2); 
-    }
-  if(DebouncerB->get()){
-    Button2Pushed = remainder((Button2Pushed + 1), 2);
-  }
 
   //if button A is pushed, set the intake to take in balls?
  if(Button1Pushed == 1) {
@@ -445,24 +246,6 @@ void Robot::TeleopPeriodic(){
  //if neither button is pushed, have conveyor do nothing?
  else{
   intake->Set(0);
- }
-
- //lift stuff
- if(operatorIn->GetRawButton(7)){
-   lift1->Set(frc::Relay::kOn);
-   lift2->Set(frc::Relay::kOn);
-   lift1->Set(frc::Relay::kForward);
-   lift2->Set(frc::Relay::kForward);   
- }
-  else if(operatorIn->GetRawButton(8)){
-   lift1->Set(frc::Relay::kOn);
-   lift2->Set(frc::Relay::kOn);
-   lift1->Set(frc::Relay::kReverse);
-   lift2->Set(frc::Relay::kReverse);   
- }
- else{
-   lift1->Set(frc::Relay::kOff);
-   lift2->Set(frc::Relay::kOff);     
  }
 
  //coneveyer forward
@@ -513,39 +296,10 @@ void Robot::TeleopPeriodic(){
     anglerMotor->Set(0);
   }
   
-  //Stuff for the color disk, never ended up using this
-  detectedColor = m_colorSensor.GetColor();
-  confidence = 0.0;
-  colorString = culir2lettr(m_colorMatcher.MatchClosestColor(detectedColor, confidence));
-  gameData = frc::DriverStation::GetInstance().GetGameSpecificMessage();
-  if(operatorIn->GetRawButton(10)&&!rotation&&!culir){
-    motor.Set(1);
-    timestart = timer.GetFPGATimestamp();
-    rotation = true;
-  }
-  if(rotation&&timer.GetFPGATimestamp()-timestart>rotateTime&&!culir){
-    motor.Set(0);
-    rotation = false;
-  }
-  if(gameData.length() > 0){
-    goal = colorbrochangero(string(1, gameData[0]));
-    detectedColor = m_colorSensor.GetColor();
-    matchedColor = m_colorMatcher.MatchClosestColor(detectedColor, confidence);
-    cletter = culir2lettr(matchedColor);
-    if(operatorIn->GetRawButton(9)&&cletter!=goal&&!rotation){
-      motor.Set(1);
-      culir = true;
-    }
-    else if(!rotation){
-      motor.Set(0);
-      culir = false;
-    }
-  }
 }
 
 
 void Robot::TestPeriodic() {
-  cout << table->GetNumber("tx",0.0) << endl;
 }
 
 
