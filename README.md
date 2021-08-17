@@ -1,5 +1,5 @@
 # CS-Portfolio
-A portfolio of all my programming projects that I feel showcase my skills as a programmer
+A portfolio of some of my programming projects that I feel showcase my skills as a programmer
 
 Project Descriptions can be found in the PROJECT-DESCRIPTIONS.md file
 
