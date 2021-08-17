@@ -10,6 +10,7 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const nets = networkInterfaces();
 const results = [];
 
+//Creates a csvWriter object to read from csv files
 const csvWriter = createCsvWriter({
   path: 'out.csv',
   header: [
@@ -50,6 +51,7 @@ const server = http.createServer(function (request, response) {
     request.on('end', function() {
       console.log(body);
       var dataArray = body.split(',');
+      //writes the data in the http request to a csv file
       const csvData = [
         {
           match: dataArray[0],
@@ -65,7 +67,7 @@ const server = http.createServer(function (request, response) {
     })
 
   } else {
-    //console.log('Get')
+    //basic html layout
     var html = `
             <html>
                 <body>
