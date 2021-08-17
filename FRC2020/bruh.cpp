@@ -109,20 +109,16 @@ double limeSetPoint = 0.0;
 bool doneFinding;
 
 
-//shooting method
-//pot max angle: 0.461, min angle: 1.14
-//positive value goes to min, negative value goes to max
-// 0, 90 -> 1.14, 0.461
+//teleop shooting method
 void Robot::teleShoot() {
   timeshootstart = timer.GetFPGATimestamp();
-  
   findTarget();
 
   targetTheta = mountingAngle + table->GetNumber("ty", 0.0);
   targetDistance = (98.25 - mountHeight) / tan(targetTheta);
   plexiAngle = angleMax - (targetTheta / 90) * (angleMax - angleRest);
   
-  
+  //Angles the plexiglass according to target distance
   while (abs(pot->PIDGet() - plexiAngle) >= plexiTolerance && joystick->GetRawAxis(3) > 0.3) {
     //cout << targetTheta << endl;
     //cout << pot->PIDGet() << endl;
@@ -141,7 +137,7 @@ void Robot::teleShoot() {
   }
   anglerMotor->Set(0);
   
-  
+  //Once the flywheel for the launcher has spun up, the conveyor will start moving the balls
   while (timer.GetFPGATimestamp()-timeshootstart < 10.5 && joystick->GetRawAxis(3) > 0.3){
     if (timer.GetFPGATimestamp()-timeshootstart < 4.5) {
       spinnyBoi.moovmint(0, 0, 0, false);
@@ -157,6 +153,7 @@ void Robot::teleShoot() {
   spinnyBoi.moovmint(0, 0, 0, false);
 }
 
+//autonomous shooting method
 void Robot::autoShoot() {
   doneshoot = true;
   timeshootstart = timer.GetFPGATimestamp();
@@ -178,26 +175,30 @@ void Robot::autoShoot() {
 //PID for the limelight
 frc2::PIDController *limeControl = new frc2::PIDController(0.035, 0.0, 0.8);
 
-//Targeting method
+//Targeting method for autonomous
+//if the target is found, starts autoShoot method
 void Robot::startAutoTarget() {
   if (findTarget()) {
     autoShoot();
   }
-  
 }
 
-
+//Targeting method for teleop
+//if the target is found, starts teleShoot method
 void Robot::startTeleTarget() {
   if (findTarget()) {
     teleShoot();
   }
 }
 
+//method for finding the target
+//turns the robot to face the target until within tolerance
 bool Robot::findTarget() {
+  //if a target is detected
   validTarget = table->GetNumber("tv",0.0);
   if (validTarget == 1 && !doneshoot) {
+    //gets horizontal offset
     targetOH = table->GetNumber("tx",0.0);
-    //Experimental Limelight PID
     
     if (abs(targetOH) <= tolerance) {
       spinnyBoi.moovmint(0, 0, 0, false);
@@ -207,13 +208,14 @@ bool Robot::findTarget() {
       spinnyBoi.moovmint(0, 0, 0, false);
     }
     else {
+      //turns the robot towards the target using the PID controller
       spinnyBoi.moovmint(0, 0, -1 * (limeControl->Calculate(table->GetNumber("tx", 0.0), limeSetPoint)), true);
     }
   }
   return false;
 }
 
-
+//starts autonomous shooting methods
 void Robot::AutonomousPeriodic() {
   if (!mooving) {
     timeautostart = timer.GetFPGATimestamp();
@@ -231,8 +233,8 @@ void Robot::AutonomousPeriodic() {
 }
 
 
+//teleop methods, mostly calling functions if certain buttons are pressed
 void Robot::TeleopPeriodic(){
-
   //if button A is pushed, set the intake to take in balls?
  if(Button1Pushed == 1) {
    intake->Set(-intakeSpeed);
