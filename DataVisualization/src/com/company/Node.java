@@ -96,12 +96,12 @@ class Node {
         return button;
     }
 
-    //Sets screen position increment for GUI
+    //Sets position increment for printing tree to console for debugging
     public void setInc(int inc) {
         curInc = inc;
     }
 
-    //Returns screen position increment
+    //Returns position increment
     public int getInc() {
         return curInc;
     }
