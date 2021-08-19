@@ -2,13 +2,15 @@ package com.company;
 import javax.swing.*;
 import java.util.ArrayList;
 
+//Binary tree object
 class binaryTree {
+    //Constructor
     public binaryTree(Node topNode) {
         this.topNode = topNode;
     }
 
+    //Method to search for nodes within tree
     public Node search(Node pNode, int value) {
-        //System.out.println(pNode.getInt());
         if (value > pNode.getInt()) {
             if (pNode.getRightNode() != null) {
                 return search(pNode.getRightNode(), value);
@@ -30,6 +32,7 @@ class binaryTree {
         }
     }
 
+    //Method to add node to tree
     public void addNode(Node pNode, Node added) {
         if (topNode == null) {
             topNode = added;
@@ -59,6 +62,7 @@ class binaryTree {
         }
     }
 
+    //Method to remove a node section from the tree
     public void removeNodeSection(JFrame frame, Node pNode) {
         if (pNode.getParent() != null) {
             if (pNode.getInt() > pNode.getParent().getInt()) {
@@ -84,6 +88,7 @@ class binaryTree {
 
     }
 
+    //Prints all of the nodes in the tree
     public void printNodes(Node pNode) {
         if (pNode.getParent() != null) {
             System.out.println("Node Value: " + pNode.getInt() + " Node Count: " + pNode.getDataCount() + " Parent Node: " + pNode.getParent().getInt());
@@ -102,18 +107,22 @@ class binaryTree {
 
     }
 
+    //Returns top node on the tree
     public Node getTopNode() {
         return topNode;
     }
 
+    //Returns the search node button
     public JButton getSearchNode() {
         return hBut;
     }
 
+    //Sets the search node button
     public void setSearchNode(JButton newN) {
         hBut = newN;
     }
 
+    //Private variables
     private JButton hBut;
     private Node topNode;
 }
