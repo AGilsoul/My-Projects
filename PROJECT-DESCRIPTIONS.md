@@ -2,9 +2,13 @@
 Project Descriptions:
 
 HIGHLIGHTED PROJECTS - These are the projects that I am most proud of, the descriptions of which can be found with a * next to them:
+
 KNearestNeighbors
+
 KMeansClustering
+
 LinearRegression
+
 
 
 C++:
