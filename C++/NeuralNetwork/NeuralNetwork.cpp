@@ -40,24 +40,40 @@ NeuralNetwork::NeuralNetwork(int numLayers, vector<int> neurons, double learning
     //rng.seed(5);
 }
 
-//still need to code this and backpropogation method
+
+void NeuralNetwork::normalize(vector<vector<double>>& input) {
+    for (int p = 0; p < input[0].size(); p++) {
+        vector<double> curData;
+        for (auto & i : input) {
+            curData.push_back(i[p]);
+        }
+        auto sortedData = sortVector(curData);
+        for (auto & i : input) {
+            i[p] = (i[p] - sortedData[0]) / (sortedData[sortedData.size() - 1] - sortedData[0]);
+        }
+    }
+}
+
+//still working on this
 void NeuralNetwork::train(vector<vector<double>> input, vector<vector<double>> allResults, int iterations) {
     //initialize input neuron weights
     for (int i = 0; i < layers[0].size(); i++) {
         initializeWeights(input.size(), layers[0][i]);
     }
     //for every iteration
+    vector<vector<double>> weightChanges;
     for (int i = 0; i < iterations; i++) {
         cout << i << endl;
         for (int x = 0; x < input.size(); x++) {
-            printVector(forwardProp(input[x]));
-            cout << endl;
+            //printVector(forwardProp(input[0]));
+
             auto desiredResult = allResults[x];
-            cout << "data point #" << x << endl;
+            //cout << "data point #" << x << endl;
             //gets final result of forward propogation
             vector<double> finalResult = forwardProp(input[x]);
             //first layer backprop
             vector<double> nextDeltas;
+            vector<double> firstChange;
             for (int neuronCount = 0; neuronCount < layers[layers.size() - 1].size();neuronCount++) {
                 auto curN = layers[layers.size()- 1][neuronCount];
                 curN->delta = finalGradient(curN, desiredResult[neuronCount]);
@@ -82,27 +98,22 @@ void NeuralNetwork::train(vector<vector<double>> input, vector<vector<double>> a
                     auto curN = layers[layerCount][neuronCount];
                     for (int w = 0; w < curN->weights.size(); w++) {
                         curN->weights[w] -= weightDerivative(curN->delta, curN->prevInputs[w]) * learningRate;
+                       // cout << curN->weights[w] << " ";
                     }
+                    //cout << endl;
                     curN->bias -= curN->delta * learningRate;
                 }
             }
         }
     }
-
-
 }
 
-double NeuralNetwork::sigmoid(double input) {
-    return 1 / (1 + exp(-input));
-}
 
-double NeuralNetwork::sigmoidDeriv(double input) {
-    return sigmoid(input) * (1 - sigmoid(input));
-}
 
 
 vector<double> NeuralNetwork::forwardProp(vector<double> input) {
     auto data = input;
+
     for (int layerIndex = 0; layerIndex < layers.size(); layerIndex++) {
         vector<double> layerResults;
         for (int neuronIndex = 0; neuronIndex < layers[layerIndex].size(); neuronIndex++) {
@@ -110,10 +121,18 @@ vector<double> NeuralNetwork::forwardProp(vector<double> input) {
             double neuronResult = tempNPointer->calculate(data);
             tempNPointer->prevInputs = data;
             tempNPointer->output = neuronResult;
+            //cout << neuronResult << " s: ";
             layerResults.push_back(sigmoid(neuronResult));
+            //cout << sigmoid(neuronResult) << " ";
         }
+        //cout << endl << "NEW LAYER" << endl;
         data = layerResults;
     }
+    //cout << "****************NEW FORWARDPROP*****************" << endl;
+    //cout << "nan weights: " << endl;
+    //printVector(layers[0][7]->weights);
+    //cout << endl << endl;
+    //cout << endl;
     return data;
 }
 
@@ -135,38 +154,22 @@ vector<vector<double>> NeuralNetwork::vectorSplit(vector<vector<double>> vec, in
     return newVec;
 }
 
-double NeuralNetwork::test(vector<vector<double>> testData, vector<vector<double>> testLabel) {
+double NeuralNetwork::test(vector<vector<double>>& testData, vector<vector<double>>& testLabel) {
     double accuracy = 0;
     for (int i = 0; i < testData.size(); i++) {
+        //printVector(testLabel[i]);
         vector<double> tempResult = forwardProp(testData[i]);
-        cout << "Actual: ";
-        printVector(tempResult);
-        cout << endl << "Expected: ";
+        double newResult;
+        if (tempResult[0] > 0.5) {
+            newResult = 1;
+        }
+        else {
+            newResult = 0;
+        }
+        cout << "result: " << newResult << " actual: ";
         printVector(testLabel[i]);
-        vector<double> newResult;
-        double max = 0;
-        int maxIndex;
-        for (int y = 0; y < tempResult.size(); y++) {
-            if (tempResult[y] > max) {
-                maxIndex = y;
-                max = tempResult[y];
-            }
-        }
-        for (int z = 0; z < tempResult.size(); z++) {
-            if (z == maxIndex) {
-                newResult.push_back(1);
-            }
-            else {
-                newResult.push_back(0);
-            }
-        }
-        bool correct = true;
-        for (int x = 0; x < testLabel[i].size(); x++) {
-            if (tempResult[x] != testLabel[i][x]) {
-                correct = false;
-            }
-        }
-        if (correct) {
+        cout << endl <<endl;
+        if (newResult == testLabel[i][0]) {
             accuracy++;
         }
     }
@@ -175,10 +178,19 @@ double NeuralNetwork::test(vector<vector<double>> testData, vector<vector<double
 
 
 //Private Methods
+double NeuralNetwork::sigmoid(double input) {
+    return 1 / (1 + exp(-input));
+}
+
+double NeuralNetwork::sigmoidDeriv(double input) {
+    return sigmoid(input) * (1 - sigmoid(input));
+}
+
 void NeuralNetwork::initializeWeights(int numWeights, Neuron* newN) {
     std::uniform_real_distribution<double> unif(-1, 1);
     for (int i = 0; i < numWeights; i++) {
         newN->weights.push_back(unif(rng));
+        //newN->weights.push_back(sigmoid(i));
     }
 }
 
@@ -200,17 +212,22 @@ double NeuralNetwork::weightDerivative(double neuronError, double prevNeuron) {
     return neuronError * prevNeuron;
 }
 
-
-//Cost function partial derivative with respect to the weights
-double NeuralNetwork::derivWeight(Neuron* curN, int index, double expected) {
-    double prediction = curN->calculate(curN->prevInputs);
-    return 2 * (expected - (prediction)) * -curN->prevInputs[index];
-}
-
-//Cost function partial derivative with respect to the bias
-double NeuralNetwork::derivBias(Neuron* curN, double expected) {
-    double prediction = curN->calculate(curN->prevInputs);
-    return -2 * (expected - prediction);
+vector<double> NeuralNetwork::sortVector(vector<double> vec) {
+    vector<double> sortedData;
+    sortedData.push_back(vec[0]);
+    for (int x = 1; x < vec.size(); x++) {
+        for (int y = 0; y < sortedData.size(); y++) {
+            if (vec[x] < sortedData[y]) {
+                sortedData.insert(sortedData.begin() + y, vec[x]);
+                break;
+            }
+            else if (y == sortedData.size() - 1) {
+                sortedData.push_back(vec[x]);
+                break;
+            }
+        }
+    }
+    return sortedData;
 }
 
 

@@ -30,23 +30,23 @@ public:
     };
 
     NeuralNetwork(int numLayers, vector<int> neurons, double learningRate);
+    void normalize(vector<vector<double>>& input);
     void train(vector<vector<double>> input, vector<vector<double>> allResults, int iterations);
+    vector<double> forwardProp(vector<double> input);
+    static void printVector(vector<double> input);
+    vector<vector<double>> vectorSplit(vector<vector<double>> vec, int start, int fin);
+    double test(vector<vector<double>>& testData, vector<vector<double>>& testLabel);
+
+private:
+
     static double sigmoid(double input);
     static double sigmoidDeriv(double input);
-    vector<double> forwardProp(vector<double> input);
-    double derivWeight(Neuron* curN, int index, double expected);
-    double derivBias(Neuron* curN, double expected);
+    void initializeWeights(int numWeights, Neuron* newN);
     double finalGradient(Neuron* curN, double expected);
     double hiddenGradient(Neuron* curN, int nIndex, vector<Neuron*> nextLayer, vector<double> nextDeltas);
     double weightDerivative(double neuronError, double prevNeuron);
-    static void printVector(vector<double> input);
-    vector<vector<double>> vectorSplit(vector<vector<double>> vec, int start, int fin);
-    double test(vector<vector<double>> testData, vector<vector<double>> testLabel);
+    vector<double> sortVector(vector<double> vec);
 
-
-private:
-    void initializeWeights(int numWeights, Neuron* newN);
-    void backProp();
 
     vector<vector<Neuron*>> layers;
     double learningRate;

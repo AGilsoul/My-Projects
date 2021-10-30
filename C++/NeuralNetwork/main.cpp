@@ -20,27 +20,31 @@ int main() {
 
     //Creates NeuralNetwork "net" with 3 layers, 2 neurons in layer 1, 3 in layer 2, 1 in layer 3
     //sets learning rate to 0.01 (not used yet)
-    NeuralNetwork net(4, {16, 16, 4, 2}, 0.00001);
+    NeuralNetwork net(4, {16, 16, 4, 1}, 0.00001);
     vector<vector<double>> data;
     vector<vector<double>> expected;
     readFile(data, expected);
+    /*
+    for (int i = 0; i < data.size(); i++) {
+        for (int m = 0; m < data[i].size(); m++) {
+            data[i][m] = net.sigmoid(data[i][m]);
+        }
+    }
+     */
+    net.normalize(data);
+    net.printVector(data[0]);
+    cout << endl << endl;
+    net.printVector(data[1]);
+    cout << endl << endl;
     auto trainData = net.vectorSplit(data, 0, ceil(data.size() * 0.8));
     auto testData = net.vectorSplit(data, ceil(data.size() * 0.8), data.size() - 1);
     auto trainExpected = net.vectorSplit(expected, 0, ceil(expected.size() * 0.8));
     auto testExpected = net.vectorSplit(expected, ceil(expected.size() * 0.8), expected.size() - 1);
 
-    //vector<double> expected = {1.0, 0.0, 0.0};
-    //Creates a 2d Vector of inputs to test, just one double vector with 3 inputs
-    //<vector<double>> testData = {{0.7, 0.2, 0.0}};
-    //still not really used yet, no functioning backprop yet
-    //auto result = net.forwardProp(testData[0]);
-    //cout << "Expected: ";
-    //NeuralNetwork::printVector(expected);
-    //cout << endl;
-    //NeuralNetwork::printVector(result);
-    //cout << endl;
     net.train(trainData, trainExpected, 1);
-    cout << net.test(testData, testExpected) << endl;
+
+    cout << net.test(testData, testExpected) << "%" << endl;
+    cout << endl;
 
     //result = net.forwardProp(testData[0]);
     //NeuralNetwork::printVector(testData[0]);
@@ -76,12 +80,12 @@ void readFile(vector<vector<double>>& testData, vector<vector<double>>& expected
             }
             else if (i == 1) {
                 if (sList[i] == "M") {
+                    //cout << "M" << endl;
                     result.push_back(1);
-                    result.push_back(0);
                 }
                 else {
+                    //cout << "B" << endl;
                     result.push_back(0);
-                    result.push_back(1);
                 }
             }
         }
