@@ -21,6 +21,9 @@ double NeuralNetwork::Neuron::calculate(vector<double> input) {
 NeuralNetwork::NeuralNetwork(int numLayers, vector<int> neurons, double learningRate, double momentum) {
     this->learningRate = learningRate;
     this->momentum = momentum;
+    uint64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    std::seed_seq ss{uint32_t(timeSeed & 0xffffffff), uint32_t(timeSeed>>32)};
+
     for (int i = 0; i < numLayers; i++) {
         vector<Neuron*> tempLayer;
         for (int n = 0; n < neurons[i]; n++) {
@@ -33,8 +36,6 @@ NeuralNetwork::NeuralNetwork(int numLayers, vector<int> neurons, double learning
         layers.push_back(tempLayer);
     }
 
-    uint64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-    std::seed_seq ss{uint32_t(timeSeed & 0xffffffff), uint32_t(timeSeed>>32)};
 
 
     rng.seed(ss);
@@ -99,14 +100,14 @@ void NeuralNetwork::train(vector<vector<double>> input, vector<vector<double>> a
                     auto curN = layers[layerCount][neuronCount];
                     for (int w = 0; w < curN->weights.size(); w++) {
                         double result = weightDerivative(curN->delta, curN->prevInputs[w]) * learningRate;
-                        curN->weights[w] -= result - curN->prevGradients[w] * momentum;
-                        curN->prevGradients[w] = result - curN->prevGradients[w] * momentum;
+                        curN->weights[w] -= result + curN->prevGradients[w] * momentum;
+                        curN->prevGradients[w] = result + curN->prevGradients[w] * momentum;
                        // cout << curN->weights[w] << " ";
                     }
                     //cout << endl;
                     double bResult = curN->delta * learningRate;
-                    curN->bias -= bResult - curN->prevBias * momentum;
-                    curN->prevBias = bResult - curN->prevBias * momentum;
+                    curN->bias -= bResult + curN->prevBias * momentum;
+                    curN->prevBias = bResult + curN->prevBias * momentum;
                 }
             }
         }
@@ -171,6 +172,9 @@ double NeuralNetwork::test(vector<vector<double>>& testData, vector<vector<doubl
         else {
             newResult = 0;
         }
+        cout << "real result: ";
+        printVector(tempResult);
+        cout << endl;
         cout << "result: " << newResult << " actual: ";
         printVector(testLabel[i]);
         cout << endl <<endl;
@@ -192,7 +196,7 @@ double NeuralNetwork::sigmoidDeriv(double input) {
 }
 
 void NeuralNetwork::initializeWeights(int numWeights, Neuron* newN) {
-    std::uniform_real_distribution<double> unif(-1, 1);
+    std::uniform_real_distribution<double> unif(-1*sqrt(6./numWeights), sqrt(6./numWeights));
     for (int i = 0; i < numWeights; i++) {
         double value = unif(rng);
         newN->weights.push_back(value);

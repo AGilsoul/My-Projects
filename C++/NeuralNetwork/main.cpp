@@ -20,7 +20,7 @@ int main() {
 
     //Creates NeuralNetwork "net" with 3 layers, 2 neurons in layer 1, 3 in layer 2, 1 in layer 3
     //sets learning rate to 0.01 (not used yet)
-    NeuralNetwork net(6, {16, 16, 16, 16, 4, 1}, 0.01, 0.9);
+    NeuralNetwork net(4, {16, 16, 4, 1}, 0.01, 0.9);
     vector<vector<double>> data;
     vector<vector<double>> expected;
     readFile(data, expected);
