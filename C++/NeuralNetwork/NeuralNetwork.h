@@ -24,12 +24,14 @@ public:
         vector<double> weights;
         double bias;
         vector<double> prevInputs;
+        vector<double> prevGradients;
+        double prevBias;
         double output;
         double delta;
         double calculate(vector<double> input);
     };
 
-    NeuralNetwork(int numLayers, vector<int> neurons, double learningRate);
+    NeuralNetwork(int numLayers, vector<int> neurons, double learningRate, double momentum);
     void normalize(vector<vector<double>>& input);
     void train(vector<vector<double>> input, vector<vector<double>> allResults, int iterations);
     vector<double> forwardProp(vector<double> input);
@@ -50,6 +52,7 @@ private:
 
     vector<vector<Neuron*>> layers;
     double learningRate;
+    double momentum;
     std::mt19937_64 rng;
 
 };

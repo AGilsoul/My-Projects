@@ -20,7 +20,7 @@ int main() {
 
     //Creates NeuralNetwork "net" with 3 layers, 2 neurons in layer 1, 3 in layer 2, 1 in layer 3
     //sets learning rate to 0.01 (not used yet)
-    NeuralNetwork net(4, {16, 16, 4, 1}, 0.00001);
+    NeuralNetwork net(6, {16, 16, 16, 16, 4, 1}, 0.01, 0.9);
     vector<vector<double>> data;
     vector<vector<double>> expected;
     readFile(data, expected);
@@ -41,7 +41,7 @@ int main() {
     auto trainExpected = net.vectorSplit(expected, 0, ceil(expected.size() * 0.8));
     auto testExpected = net.vectorSplit(expected, ceil(expected.size() * 0.8), expected.size() - 1);
 
-    net.train(trainData, trainExpected, 1);
+    net.train(trainData, trainExpected, 100);
 
     cout << net.test(testData, testExpected) << "%" << endl;
     cout << endl;

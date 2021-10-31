@@ -18,8 +18,9 @@ double NeuralNetwork::Neuron::calculate(vector<double> input) {
     return total;
 }
 
-NeuralNetwork::NeuralNetwork(int numLayers, vector<int> neurons, double learningRate) {
+NeuralNetwork::NeuralNetwork(int numLayers, vector<int> neurons, double learningRate, double momentum) {
     this->learningRate = learningRate;
+    this->momentum = momentum;
     for (int i = 0; i < numLayers; i++) {
         vector<Neuron*> tempLayer;
         for (int n = 0; n < neurons[i]; n++) {
@@ -97,11 +98,15 @@ void NeuralNetwork::train(vector<vector<double>> input, vector<vector<double>> a
                 for (int neuronCount = 0; neuronCount < layers[layerCount].size(); neuronCount++) {
                     auto curN = layers[layerCount][neuronCount];
                     for (int w = 0; w < curN->weights.size(); w++) {
-                        curN->weights[w] -= weightDerivative(curN->delta, curN->prevInputs[w]) * learningRate;
+                        double result = weightDerivative(curN->delta, curN->prevInputs[w]) * learningRate;
+                        curN->weights[w] -= result - curN->prevGradients[w] * momentum;
+                        curN->prevGradients[w] = result - curN->prevGradients[w] * momentum;
                        // cout << curN->weights[w] << " ";
                     }
                     //cout << endl;
-                    curN->bias -= curN->delta * learningRate;
+                    double bResult = curN->delta * learningRate;
+                    curN->bias -= bResult - curN->prevBias * momentum;
+                    curN->prevBias = bResult - curN->prevBias * momentum;
                 }
             }
         }
@@ -189,7 +194,10 @@ double NeuralNetwork::sigmoidDeriv(double input) {
 void NeuralNetwork::initializeWeights(int numWeights, Neuron* newN) {
     std::uniform_real_distribution<double> unif(-1, 1);
     for (int i = 0; i < numWeights; i++) {
-        newN->weights.push_back(unif(rng));
+        double value = unif(rng);
+        newN->weights.push_back(value);
+        newN->prevGradients.push_back(0);
+        //cout << value << endl;
         //newN->weights.push_back(sigmoid(i));
     }
 }
