@@ -43,6 +43,8 @@ private:
 
     static double sigmoid(double input);
     static double sigmoidDeriv(double input);
+    static double relu(double input);
+    static double reluDeriv(double input);
     void initializeWeights(int numWeights, Neuron* newN);
     double finalGradient(Neuron* curN, double expected);
     double hiddenGradient(Neuron* curN, int nIndex, vector<Neuron*> nextLayer, vector<double> nextDeltas);

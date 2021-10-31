@@ -23,6 +23,8 @@ NeuralNetwork::NeuralNetwork(int numLayers, vector<int> neurons, double learning
     this->momentum = momentum;
     uint64_t timeSeed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
     std::seed_seq ss{uint32_t(timeSeed & 0xffffffff), uint32_t(timeSeed>>32)};
+    rng.seed(ss);
+    //rng.seed(5);
 
     for (int i = 0; i < numLayers; i++) {
         vector<Neuron*> tempLayer;
@@ -35,11 +37,6 @@ NeuralNetwork::NeuralNetwork(int numLayers, vector<int> neurons, double learning
         }
         layers.push_back(tempLayer);
     }
-
-
-
-    rng.seed(ss);
-    //rng.seed(5);
 }
 
 
@@ -128,7 +125,7 @@ vector<double> NeuralNetwork::forwardProp(vector<double> input) {
             tempNPointer->prevInputs = data;
             tempNPointer->output = neuronResult;
             //cout << neuronResult << " s: ";
-            layerResults.push_back(sigmoid(neuronResult));
+            layerResults.push_back(relu(neuronResult));
             //cout << sigmoid(neuronResult) << " ";
         }
         //cout << endl << "NEW LAYER" << endl;
@@ -195,6 +192,23 @@ double NeuralNetwork::sigmoidDeriv(double input) {
     return sigmoid(input) * (1 - sigmoid(input));
 }
 
+
+double NeuralNetwork::relu(double input) {
+    if (input > 0) {
+        return input;
+    }
+    return 0;
+}
+double NeuralNetwork::reluDeriv(double input) {
+    if (input > 0) {
+        return 1;
+    }
+    else if (input < 0) {
+        return 0;
+    }
+}
+
+
 void NeuralNetwork::initializeWeights(int numWeights, Neuron* newN) {
     std::uniform_real_distribution<double> unif(-1*sqrt(6./numWeights), sqrt(6./numWeights));
     for (int i = 0; i < numWeights; i++) {
@@ -204,11 +218,12 @@ void NeuralNetwork::initializeWeights(int numWeights, Neuron* newN) {
         //cout << value << endl;
         //newN->weights.push_back(sigmoid(i));
     }
+    newN->prevBias = 0;
 }
 
 //FINISH THESE
 double NeuralNetwork::finalGradient(Neuron* curN, double expected) {
-    return sigmoidDeriv(curN->output) * (sigmoid(curN->output) - expected);
+    return reluDeriv(curN->output) * (relu(curN->output) - expected);
 }
 
 double NeuralNetwork::hiddenGradient(Neuron* curN, int nIndex, vector<Neuron*> nextLayer, vector<double> nextDeltas) {
@@ -217,7 +232,7 @@ double NeuralNetwork::hiddenGradient(Neuron* curN, int nIndex, vector<Neuron*> n
         auto newN = nextLayer[i];
         total += newN->weights[nIndex] * nextDeltas[i];
     }
-    return sigmoidDeriv(curN->output) * total;
+    return reluDeriv(curN->output) * total;
 }
 
 double NeuralNetwork::weightDerivative(double neuronError, double prevNeuron) {
