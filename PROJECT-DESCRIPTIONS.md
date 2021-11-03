@@ -9,7 +9,7 @@ KMeansClustering
 
 LinearRegression
 
-Neural Network
+NeuralNetwork
 
 
 C++:
@@ -20,7 +20,7 @@ C++:
   
 **  LinearRegression: Another machine learning algorithm that I coded from scratch in C++. This project contains a class that can fit a line, plane, or hyperplane to a set of data using regression techniques, and contains a main.cpp file for an example run. The adjustments to the coefficients of the line/plane are calculated using gradient descent and partial derivatives.
 
-**  NeuralNetwork: This project is also from made from scratch in C++. The network adjusts the weights of connections between structs called neurons to determine probabilities, such as the probability of a written character being a certain number, or of a cat being in a picture. Currently, it is used on the same dataset that is used by the K-Nearest Neighbors, which contains over 500 different tumors, which are classified as either malignant or benign. While this algorithm takes longer to train than the others, it is one of, if not the most accurate of all my algorithms taht I have written. In addition to this, once trained, it can make predictions extremely quickly.
+**  NeuralNetwork: This project is also from made from scratch in C++. The network adjusts the weights of connections between structs called neurons to determine probabilities, such as the probability of a written character being a certain number, or of a cat being in a picture. Currently, it is used on the same dataset that is used by the K-Nearest Neighbors, which contains over 500 different tumors, which are classified as either malignant or benign. While this algorithm takes longer to train than the others, it is one of, if not the most accurate of all my algorithms that I have written. In addition to this, once trained, it can make predictions extremely quickly.
 
   FRC2020: This folder contains the code written for my high school's First Robotics Competition (FRC) robot. I wrote the code with a team of five people (I have omitted all portions of the code that I did not write myself). The majority of the important code is contained in the file named "bruh.cpp". The functionalities I programmed into the robot mainly revolved around its ball shooting capabilities. During the competition, our robot had to launch balls at a target. Included in this was vision processing, which I coded in to the robot to allow it to aim itself at a target using a "Limelight" camera. This allowed for increased accuracy over simply having the robot driver aim it themself. The methods which I coded are belonging to the Robot class and are named teleShoot, autoShoot, startAutoTarget, startTeleTarget, findTarget, and AutonomousPeriodic. In addition to this I also helped with some of the code in the TeleopPeriodic method. The methods that I wrote all use each other to aim the robot, and implement a Proportion Integral Derivative (PID) controller method to aim the robot without overadjusting.
   
