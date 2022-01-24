@@ -1,73 +1,94 @@
 import numpy as np
 from math import sqrt, exp
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
 
 class NeuralNet:
+    # Layer base class
     class Layer:
-        def __init__(self, neuron_count, activation=None, activation_deriv=None):
+        def __init__(self, neuron_count, activation_func=None, gradient_func=None):
             self.neurons = neuron_count
-            self.input = None
-            self.prev_input = None
+            self.inputs = None
+            self.pre_output = None
+            self.outputs = None
             self.weights = None
             self.prev_gradients = None
-            self.bias = 1
-            self.prev_bias = 0
-            self.activation = activation
-            self.activation_deriv = activation_deriv
+            self.deltas = None
+            self.biases = None
+            self.prev_biases = None
+            self.activation_func = activation_func
+            self.gradient_func = gradient_func
 
         # generates random weights with xavier initialization
-        def generate_weights(self, num_weights, prev_weights):
-            lower, upper = -(1.0 / sqrt(prev_weights)), (1.0 / sqrt(prev_weights))
-            result_weights = np.random.rand(num_weights, prev_weights)
+        def generate_weights(self, num_out, num_weights):
+            lower, upper = -(1.0 * sqrt(6.0) / sqrt(num_weights + num_out)), (1.0 * sqrt(6.0) / sqrt(num_weights + num_out))
+            result_weights = np.random.rand(num_out, num_weights)
             result_weights = lower + result_weights * (upper - lower)
+            self.biases = np.zeros(num_out)
+            self.prev_biases = np.zeros(num_out)
             self.weights = result_weights
-            self.prev_gradients = np.zeros(num_weights)
+            self.prev_gradients = np.zeros([num_out, num_weights])
 
+        # weighted sum + bias for a layer
         def calc_output(self, data):
             data = np.dot(self.weights, data)
-            for i in data:
-                i += self.bias
+            for i in range(len(data)):
+                data[i] += self.biases[i]
+            self.pre_output = data
             return data
 
+        # applies activation function to weighted sum
         def feed_forward(self, data):
-            return self.activation(self.calc_output(data))
+            self.inputs = data
+            self.outputs = self.activation_func(self.calc_output(data))
+            return self.outputs
 
         def __str__(self):
-            output = "Weights:\n"
-            for i in range(len(self.weights)):
-                output += "\tNeuron " + str(i) + ": " + str(self.weights[i]) + " | Bias: " + str(self.bias)
-                output += "\n"
+            if isinstance(self, NeuralNet.InputLayer):
+                return "Input Layer"
+            if isinstance(self, NeuralNet.HiddenLayer):
+                return "Hidden Layer"
+            if isinstance(self, NeuralNet.RegressionOutputLayer):
+                return "Regression Output Layer"
+            if isinstance(self, NeuralNet.SoftMaxOutputLayer):
+                return "Softmax Output Layer"
+
+        def ReLu(self, output):
+            for i in range(len(output)):
+                if output[i] < 0:
+                    output[i] = 0
             return output
 
-        @staticmethod
-        def ReLu(output):
-            for i in output:
-                if i < 0:
-                    i = 0
-            return output
-
-        @staticmethod
-        def Relu_deriv(data):
-            for i in data:
-                if i > 0:
-                    i = 1
+        def Relu_deriv(self, data):
+            result = np.zeros([len(data)], dtype=float)
+            for i in range(len(data)):
+                if data[i] > 0:
+                    result[i] = 1
                 else:
-                    i = 0
-            return data
+                    result[i] = 0
+            return result
 
-        @staticmethod
-        def linear_activation(data):
-            return data
+        def ReLu_Gradient(self, next_deltas, next_layer):
+            neuron_gradients = np.zeros([len(self.weights)], dtype=float)
+            for weight_index in range(len(self.weights)):
+                total = 0
+                for n in range(len(next_layer.weights)):
+                    total += next_layer.weights[n][weight_index] * next_deltas[n]
+                neuron_gradients[weight_index] = total
 
-        @staticmethod
-        def linear_deriv(data):
-            return np.ones(data.shape)
+            return neuron_gradients * self.Relu_deriv(self.pre_output)
 
-        @staticmethod
-        def softmax(data):
+        def linear_activation(self, data):
+            return np.array(data)
+
+        def linear_gradient(self, output, target):
+            return np.array([2 * (output[0] - target)])
+
+        def softmax(self, data):
             denominator = sum(exp(x) for x in data)
-            for i in data:
-                i = exp(i) / denominator
+            for i in range(len(data)):
+                data[i] = exp(data[i]) / denominator
             return data
 
         # working on this still
@@ -76,26 +97,32 @@ class NeuralNet:
             total = np.sum(self.weights, )
             return
 
-        @staticmethod
-        def cross_entropy_loss(output, expected):
-            expected = np.array(expected)
+        def cross_entropy_loss(self, output, target):
+            expected = np.array(target)
             if len(expected.shape) == 1:
                 expected = np.atleast_2d(expected).T
 
             total = - np.sum(np.log(output) * expected, axis=1)
             return total
 
+        def softmax_cost(self, output, target):
+            return np.mean(NeuralNet.Layer.cross_entropy_loss(output, target))
+
         @staticmethod
-        def softmax_cost(output, expected):
-            return np.mean(NeuralNet.Layer.cross_entropy_loss(output, expected))
+        def weight_derivative(delta, output):
+            return delta * output
 
     class InputLayer(Layer):
-        def __init__(self, input_count):
-            super().__init__(input_count)
+        def __init__(self, neuron_count):
+            super().__init__(neuron_count)
+            self.weights = np.ones([neuron_count, neuron_count])
+
+        def feed_forward(self, data):
+            return data
 
     class HiddenLayer(Layer):
         def __init__(self, neuron_count):
-            super().__init__(neuron_count, self.ReLu, self.Relu_deriv)
+            super().__init__(neuron_count, self.ReLu, self.ReLu_Gradient)
 
     class SoftMaxOutputLayer(Layer):
         def __init__(self, neuron_count):
@@ -103,7 +130,7 @@ class NeuralNet:
 
     class RegressionOutputLayer(Layer):
         def __init__(self, neuron_count):
-            super().__init__(neuron_count, self.linear_activation, self.linear_deriv)
+            super().__init__(neuron_count, self.linear_activation, self.linear_gradient)
 
     def __init__(self, lr, layer_sizes, momentum=0.0, name="Neural Network"):
         self.lr = lr
@@ -115,20 +142,66 @@ class NeuralNet:
     def build_network(self, layer_sizes):
         self.network[0] = self.InputLayer(layer_sizes[0])
         for i in range(1, len(layer_sizes) - 1):
-            new_layer = self.HiddenLayer(layer_sizes[i])
-            new_layer.generate_weights(layer_sizes[i], layer_sizes[i-1])
-            self.network[i] = new_layer
+            self.network[i] = self.HiddenLayer(layer_sizes[i])
+            self.network[i].generate_weights(layer_sizes[i], layer_sizes[i-1])
         if layer_sizes[-1] > 1:
-            out_layer = self.SoftMaxOutputLayer(layer_sizes[-1])
+            self.network[-1] = self.SoftMaxOutputLayer(layer_sizes[-1])
         else:
-            out_layer = self.RegressionOutputLayer(1)
-        out_layer.generate_weights(layer_sizes[-1], layer_sizes[-2])
-        self.network[-1] = out_layer
+            self.network[-1] = self.RegressionOutputLayer(1)
+        self.network[-1].generate_weights(layer_sizes[-1], layer_sizes[-2])
+
+    def normalize(self, data):
+        new_data = data.T
+        for column in range(len(new_data)):
+            col_min = min(new_data[column])
+            col_max = max(new_data[column])
+            for entry in range(len(new_data[column])):
+                new_data[column][entry] = (new_data[column][entry] - col_min) / (col_max - col_min)
+        return new_data.T
 
     def forward_prop(self, data):
-        for i in range(1, len(self.network)):
+        for i in range(len(self.network)):
             data = self.network[i].feed_forward(data)
+            self.network[i].output = data
         return data
+
+    def back_prop(self, train_data, train_labels):
+        for d_index in range(len(train_data)):
+            cur_result = self.forward_prop(train_data[d_index])
+            cur_label = train_labels[d_index]
+            # output layer delta computation
+            next_deltas = self.network[-1].gradient_func(cur_result, cur_label)
+            self.network[-1].deltas = next_deltas
+
+            # hidden layer delta comp
+            for index in reversed(range(1, len(self.network) - 1)):
+                next_deltas = self.network[index].gradient_func(next_deltas, self.network[index+1])
+                self.network[index].deltas = next_deltas
+
+            # update layer weights and biases
+            for index in reversed(range(1, len(self.network))):
+                for n_index in range(len(self.network[index].weights)):
+                    for w_index in range(len(self.network[index].weights[n_index])):
+                        w_res = self.network[index].weight_derivative(self.network[index].deltas[n_index], self.network[index].inputs[w_index]) * self.lr
+                        self.network[index].weights[n_index][w_index] -= w_res + self.network[index].prev_gradients[n_index][w_index] * self.momentum
+                        self.network[index].prev_gradients[n_index][w_index] = w_res + self.network[index].prev_gradients[n_index][w_index] * self.momentum
+                    b_res = self.network[index].deltas[n_index] * self.lr
+                    self.network[index].biases[n_index] -= b_res + self.network[index].prev_biases[n_index] * self.momentum
+                    self.network[index].prev_biases[n_index] = b_res + self.network[index].prev_biases[n_index] * self.momentum
+
+    def train(self, train_data, train_labels, iterations):
+        for i in range(iterations):
+            self.back_prop(train_data, train_labels)
+
+    def test(self, test_data, test_targets):
+        model_results = [self.forward_prop(x) for x in test_data]
+        residual_vals = [test_targets[x] - model_results[x] for x in range(len(model_results))]
+        residual_squared = sum([x**2 for x in residual_vals])
+        average_target = sum(test_targets) / len(test_targets)
+        SST = sum([(x - average_target)**2 for x in test_targets])
+
+        MSE = sum([x**2 for x in residual_vals]) / len(test_data)
+        return MSE[0], 1 - (residual_squared / SST)[0]
 
     def __str__(self):
         output = "\n\n" + self.name + "\n"
@@ -146,6 +219,22 @@ class NeuralNet:
         return output
 
 
-net = NeuralNet(0.01, [30, 15, 2], 0.9, name="TESTING")
-print(net)
+# creates a neural network with a learning rate of 0.01, momentum of 0.9
+# input layer for 8 inputs, hidden layer with 15 neurons and output with 1 neuron
+net = NeuralNet(0.001, [8, 15, 1], 0.0, name="TESTING")
+house_data = pd.read_csv("energyefficiency.csv")
 
+data_targets = np.array(house_data['cooling load'])
+data_in = net.normalize(np.array(house_data.drop('cooling load', axis=1)))
+
+train_data, test_data, train_targets, test_targets = train_test_split(data_in, data_targets, test_size=0.33, random_state=42)
+
+
+print(net)
+net.train(train_data, train_targets, 100)
+MSE, r2 = net.test(test_data, test_targets)
+print("MSE: " + str(MSE))
+print("R^2: " + str(r2))
+
+print(net.forward_prop(data_in[23]))
+print(data_targets[23])
