@@ -3,6 +3,7 @@ import numpy as np
 from math import sqrt, exp
 import pandas as pd
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 
 class NeuralNet:
@@ -93,9 +94,9 @@ class NeuralNet:
             return data
 
         # working on this still
-        def softmax_deriv(self, weight_index, output, expected):
+        def softmax_deriv(self, input, output, expected):
             gradients = []
-            total = np.sum(self.weights, )
+            total = np.sum(self.weights)
             return
 
         def cross_entropy_loss(self, output, target):
@@ -106,8 +107,13 @@ class NeuralNet:
             total = - np.sum(np.log(output) * expected, axis=1)
             return total
 
-        def softmax_cost(self, output, target):
+        @staticmethod
+        def softmax_cost(output, target):
             return np.mean(NeuralNet.Layer.cross_entropy_loss(output, target))
+
+        @staticmethod
+        def mean_squared_error(outputs, targets):
+            return np.mean(np.array([(outputs[x] - targets[x])**2 for x in range(len(outputs))]))
 
         @staticmethod
         def weight_derivative(delta, output):
@@ -133,7 +139,7 @@ class NeuralNet:
         def __init__(self, neuron_count):
             super().__init__(neuron_count, self.linear_activation, self.linear_gradient)
 
-    def __init__(self, lr, layer_sizes, momentum=0.0, dropout=1.0, early_stopping=-1, name="Neural Network"):
+    def __init__(self, lr, layer_sizes, momentum=0.0, dropout=1.0, early_stopping=-1, name="Neural Network", graph=False):
         self.lr = lr
         self.momentum = momentum
         self.dropout = dropout
@@ -141,6 +147,7 @@ class NeuralNet:
         self.network = np.empty(len(layer_sizes), dtype=self.Layer)
         self.build_network(layer_sizes)
         self.name = name
+        self.graph = graph
 
     def build_network(self, layer_sizes):
         self.network[0] = self.InputLayer(layer_sizes[0])
@@ -192,9 +199,31 @@ class NeuralNet:
                     self.network[index].biases[n_index] -= b_res + self.network[index].prev_biases[n_index] * self.momentum
                     self.network[index].prev_biases[n_index] = b_res + self.network[index].prev_biases[n_index] * self.momentum
 
-    def train(self, data, targets, iterations):
-        for i in range(iterations):
-            self.back_prop(data, targets)
+    def train(self, training_data, training_targets, iterations, validation_data=None, validation_targets=None):
+        if self.early_stopping == -1:
+            for i in range(iterations):
+                self.back_prop(training_data, training_targets)
+        elif len(self.network[-1].weights) == 1 and self.early_stopping != -1 and (validation_data is not None or validation_targets is not None):
+            max_r_squared = 0.0
+            decrease_streak = 0
+            val_results = []
+            for i in range(iterations):
+                self.back_prop(training_data, training_targets)
+                test_res = self.test(validation_data, validation_targets)[1]
+                val_results.append(test_res)
+                if test_res > max_r_squared:
+                    max_r_squared = test_res
+                    decrease_streak = 0
+                else:
+                    decrease_streak += 1
+                if decrease_streak >= self.early_stopping:
+                    break
+            if self.graph:
+                plt.plot(range(1, len(val_results)+1), val_results)
+                plt.ylabel("R^2")
+                plt.xlabel("Iterations")
+                plt.title("Validation Accuracy")
+                plt.show()
 
     def predict(self, data_instance):
         if len(self.network[-1].weights) == 1:
@@ -202,7 +231,6 @@ class NeuralNet:
         else:
             prob_results = self.forward_prop(data_instance)
             return prob_results.index(max(prob_results))
-
 
     def test(self, data, targets):
         if len(self.network[-1].weights) == 1:
@@ -232,17 +260,18 @@ class NeuralNet:
 
 # creates a neural network with a learning rate of 0.01, momentum of 0.9
 # input layer for 8 inputs, hidden layer with 15 neurons and output with 1 neuron
-net = NeuralNet(0.001, [8, 15, 1], momentum=0.0, name="COOLING LOAD")
+net = NeuralNet(0.001, [8, 15, 15, 1], momentum=0.0, early_stopping=10, name="COOLING LOAD", graph=True)
 house_data = pd.read_csv("energyefficiency.csv")
 
 data_targets = np.array(house_data['cooling load'])
 data_in = net.normalize(np.array(house_data.drop('cooling load', axis=1)))
 
-train_data, test_data, train_targets, test_targets = train_test_split(data_in, data_targets, test_size=0.33, random_state=42)
+train_data, temp_data, train_targets, temp_targets = train_test_split(data_in, data_targets, test_size=0.2, random_state=42)
+val_data, test_data, val_targets, test_targets = train_test_split(temp_data, temp_targets, test_size=0.5, random_state=42)
 
 
 print(net)
-net.train(train_data, train_targets, 100)
+net.train(train_data, train_targets, 100, validation_data=val_data, validation_targets=val_targets)
 MSE, r2 = net.test(test_data, test_targets)
 print("MSE: " + str(MSE))
 print("R^2: " + str(r2))
