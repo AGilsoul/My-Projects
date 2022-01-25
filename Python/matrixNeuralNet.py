@@ -1,3 +1,4 @@
+import random
 import numpy as np
 from math import sqrt, exp
 import pandas as pd
@@ -132,9 +133,11 @@ class NeuralNet:
         def __init__(self, neuron_count):
             super().__init__(neuron_count, self.linear_activation, self.linear_gradient)
 
-    def __init__(self, lr, layer_sizes, momentum=0.0, name="Neural Network"):
+    def __init__(self, lr, layer_sizes, momentum=0.0, dropout=1.0, early_stopping=-1, name="Neural Network"):
         self.lr = lr
         self.momentum = momentum
+        self.dropout = dropout
+        self.early_stopping = early_stopping
         self.network = np.empty(len(layer_sizes), dtype=self.Layer)
         self.build_network(layer_sizes)
         self.name = name
@@ -165,10 +168,10 @@ class NeuralNet:
             self.network[i].output = data
         return data
 
-    def back_prop(self, train_data, train_labels):
-        for d_index in range(len(train_data)):
+    def back_prop(self, data, targets):
+        for d_index in range(len(data)):
             cur_result = self.forward_prop(train_data[d_index])
-            cur_label = train_labels[d_index]
+            cur_label = targets[d_index]
             # output layer delta computation
             next_deltas = self.network[-1].gradient_func(cur_result, cur_label)
             self.network[-1].deltas = next_deltas
@@ -189,19 +192,27 @@ class NeuralNet:
                     self.network[index].biases[n_index] -= b_res + self.network[index].prev_biases[n_index] * self.momentum
                     self.network[index].prev_biases[n_index] = b_res + self.network[index].prev_biases[n_index] * self.momentum
 
-    def train(self, train_data, train_labels, iterations):
+    def train(self, data, targets, iterations):
         for i in range(iterations):
-            self.back_prop(train_data, train_labels)
+            self.back_prop(data, targets)
 
-    def test(self, test_data, test_targets):
-        model_results = [self.forward_prop(x) for x in test_data]
-        residual_vals = [test_targets[x] - model_results[x] for x in range(len(model_results))]
-        residual_squared = sum([x**2 for x in residual_vals])
-        average_target = sum(test_targets) / len(test_targets)
-        SST = sum([(x - average_target)**2 for x in test_targets])
+    def predict(self, data_instance):
+        if len(self.network[-1].weights) == 1:
+            return self.forward_prop(data_instance)
+        else:
+            prob_results = self.forward_prop(data_instance)
+            return prob_results.index(max(prob_results))
 
-        MSE = sum([x**2 for x in residual_vals]) / len(test_data)
-        return MSE[0], 1 - (residual_squared / SST)[0]
+
+    def test(self, data, targets):
+        if len(self.network[-1].weights) == 1:
+            model_results = [self.predict(x) for x in data]
+            residual_vals = [targets[x] - model_results[x] for x in range(len(model_results))]
+            residual_squared = sum([x**2 for x in residual_vals])
+            average_target = sum(targets) / len(targets)
+            sum_of_squares = sum([(x - average_target)**2 for x in targets])
+            means_squared_error = sum([x**2 for x in residual_vals]) / len(data)
+            return means_squared_error[0], 1 - (residual_squared / sum_of_squares)[0]
 
     def __str__(self):
         output = "\n\n" + self.name + "\n"
@@ -221,7 +232,7 @@ class NeuralNet:
 
 # creates a neural network with a learning rate of 0.01, momentum of 0.9
 # input layer for 8 inputs, hidden layer with 15 neurons and output with 1 neuron
-net = NeuralNet(0.001, [8, 15, 1], 0.0, name="TESTING")
+net = NeuralNet(0.001, [8, 15, 1], momentum=0.0, name="COOLING LOAD")
 house_data = pd.read_csv("energyefficiency.csv")
 
 data_targets = np.array(house_data['cooling load'])
@@ -236,5 +247,5 @@ MSE, r2 = net.test(test_data, test_targets)
 print("MSE: " + str(MSE))
 print("R^2: " + str(r2))
 
-print(net.forward_prop(data_in[23]))
+print(net.predict(data_in[23]))
 print(data_targets[23])
