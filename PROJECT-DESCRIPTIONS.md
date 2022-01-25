@@ -1,7 +1,7 @@
 # CS-Portfolio
 Project Descriptions:
 
-HIGHLIGHTED PROJECTS - These are the projects that I am most proud of, the descriptions of which can be found with a ** next to them all of which are C++. My favorite and most complex project is my C++ NeuralNetwork.
+HIGHLIGHTED PROJECTS - These are the projects that I am most proud of, the descriptions of which can be found with a ** next to them, most of which are C++. My favorite and most complex projects are my C++ NeuralNetwork and Python matrixNeuralNet.
 
 KNearestNeighbors
 
@@ -10,6 +10,8 @@ KMeansClustering
 LinearRegression
 
 NeuralNetwork
+
+matrixNeuralNet
 
 
 C++:
@@ -20,7 +22,7 @@ C++:
   
 **  LinearRegression: Another machine learning algorithm that I coded from scratch in C++. This project contains a class that can fit a line, plane, or hyperplane to a set of data using regression techniques, and contains a main.cpp file for an example run. The adjustments to the coefficients of the line/plane are calculated using gradient descent and partial derivatives.
 
-***  NeuralNetwork: This project is also from made from scratch in C++. The network adjusts the weights and biases of connections between structs called neurons to determine probabilities, such as the probability of a written character being a certain number, or of a cat being in a picture. There are four different run configurations in the main method, two methods for two datasets (breast tumor malignancy recognition and handwritten digit recognition). The "test_<datasetname>_config" functions load a pre-trained neural network, and test it, while the <datasetname>_config create a new neural network, train it, and save the data in a csv file. The neural networks can be trained on the breast cancer dataset in a reasonable amount of time (< 1 minute), but for the full MNIST handwritten digit dataset, it can take at least an hour to train using stochastic gradient descent (dataset includes 60,000 samples with 784 features each), so I recommend that you load the pre-trained model instead. The network can also use min-batch gradient descent, and while the accuracy suffers a little, the training time is reduced to under 10 minutes in most cases, a huge improvement time wise (it is still a work in progres, I am fine tuning to find the best training configuration for mini-batch for optimal accuracy). On both datasets, the networks accuracy sits comfortably in the 97%-100% range using stochastic gradient descent, with 100% accuracy not being uncommon. 
+***  NeuralNetwork: This project is also from made from scratch in C++. The network adjusts the weights and biases of connections between structs called neurons to determine probabilities, such as the probability of a written character being a certain number, or of a cat being in a picture. There are mulitple run configurations in the main method, for multiple datasets for use in tasks such as breast tumor malignancy recognition, handwritten digit recognition, the prediction of residential structure cooling energy loads, and more. The "test_<datasetname>_config" functions load a pre-trained neural network, and test it, while the <datasetname>_config create a new neural network, train it, and save the data in a csv file. The neural networks can be trained on the breast cancer dataset in a reasonable amount of time (< 1 minute), but for the full MNIST handwritten digit dataset, it can take at least an hour to train using stochastic gradient descent (dataset includes 60,000 samples with 784 features each), so I recommend that you load the pre-trained model instead. The network can also use min-batch gradient descent, and while the accuracy suffers a little, the training time is reduced to under 10 minutes in most cases, a huge improvement time wise (it is still a work in progres, I am fine tuning to find the best training configuration for mini-batch for optimal accuracy). On both datasets, the networks accuracy sits comfortably in the 97%-100% range using stochastic gradient descent, with 100% accuracy not being uncommon. The model performs well on regression tasks as well, but not quite as well as it does on classification tasks due to the fact that there is no clear right or wrong with regression, however, comparisons with data targets and data predictions show a good fit with the model where there is correlation between the data.
 
   FRC2020: This folder contains the code written for my high school's First Robotics Competition (FRC) robot. I wrote the code with a team of five people (I have omitted all portions of the code that I did not write myself). The majority of the important code is contained in the file named "bruh.cpp". The functionalities I programmed into the robot mainly revolved around its ball shooting capabilities. During the competition, our robot had to launch balls at a target. Included in this was vision processing, which I coded in to the robot to allow it to aim itself at a target using a "Limelight" camera. This allowed for increased accuracy over simply having the robot driver aim it themself. The methods which I coded are belonging to the Robot class and are named teleShoot, autoShoot, startAutoTarget, startTeleTarget, findTarget, and AutonomousPeriodic. In addition to this I also helped with some of the code in the TeleopPeriodic method. The methods that I wrote all use each other to aim the robot, and implement a Proportion Integral Derivative (PID) controller method to aim the robot without overadjusting.
   
@@ -36,6 +38,8 @@ C++:
   K-Means Clustering: In this program, I coded my own K-Means Clustering machine learning algorithm to classify three different types of iris flowers based on the length of their sepal and the width of their sepal. The program moves three different points, or centroids around the graph based on the data provided to locate them in the center of the three different flower clusters, and colors the flower data points based on the nearest centroid.
 
   BreastCancerClassifier: In this program, I used the K-Nearest Neighbors machine learning algorithm from the sklearn library to determine whether patients have breast cancer based on a myriad of factors that were recorded for each patient. The algorithm is then tested, and a graph is shown displaying its accuracy on a validation set of patients with a different number of "K-Nearest Neighbors". It can be seen that the accuracy of the algorithm reaches about 96.5% when K is set to 10. The algorithm can be tested on a different arrangment of the data by changing the random state in the code.
+  
+  ***matrixNeuralNet: This is my second neural network that I've written from scratch, only this time in Python. I utilized the NumPy library to simplify the code and by using matrix dot products to find the weighted sum of neurons for an entire layer rather than having to do so individually. This not only makes the code itself shorter, but increases the readability. It has been tested on one dataset so far that includes data on residential structures, and can predict the cooling energy load of these structures with an R^2 value of up to 0.96.
   
   
 Java:
