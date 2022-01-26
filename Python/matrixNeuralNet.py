@@ -1,9 +1,12 @@
 import random
+
+import mpmath
 import numpy as np
 from math import sqrt, exp
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+from sklearn.datasets import load_breast_cancer
 
 
 class NeuralNet:
@@ -90,14 +93,24 @@ class NeuralNet:
         def softmax(self, data):
             denominator = sum(exp(x) for x in data)
             for i in range(len(data)):
-                data[i] = exp(data[i]) / denominator
+                data[i] = (exp(data[i]) / denominator)
             return data
 
         # working on this still
-        def softmax_deriv(self, input, output, expected):
+        def softmax_deriv(self):
+            denominator = sum(exp(x) for x in self.pre_output)
             gradients = []
-            total = np.sum(self.weights)
-            return
+            for i in range(len(self.pre_output)):
+                gradients.append((exp(self.pre_output[i]) * denominator - exp(self.pre_output[i])**2)/(denominator**2))
+            return np.array(gradients)
+
+        def softmax_gradient(self, outputs, targets):
+            # passed arrays (current output and current target)
+            resulting_gradients = []
+            soft_derivs = self.softmax_deriv()
+            for i in range(len(targets)):
+                resulting_gradients.append(-1 * (targets[i] * (1 / self.outputs[i]) * soft_derivs[i]))
+            return np.array(resulting_gradients)
 
         def cross_entropy_loss(self, output, target):
             expected = np.array(target)
@@ -133,7 +146,7 @@ class NeuralNet:
 
     class SoftMaxOutputLayer(Layer):
         def __init__(self, neuron_count):
-            super().__init__(neuron_count, self.softmax, self.softmax_deriv)
+            super().__init__(neuron_count, self.softmax, self.softmax_gradient)
 
     class RegressionOutputLayer(Layer):
         def __init__(self, neuron_count):
@@ -177,7 +190,7 @@ class NeuralNet:
 
     def back_prop(self, data, targets):
         for d_index in range(len(data)):
-            cur_result = self.forward_prop(train_data[d_index])
+            cur_result = self.forward_prop(data[d_index])
             cur_label = targets[d_index]
             # output layer delta computation
             next_deltas = self.network[-1].gradient_func(cur_result, cur_label)
@@ -199,15 +212,16 @@ class NeuralNet:
                     self.network[index].biases[n_index] -= b_res + self.network[index].prev_biases[n_index] * self.momentum
                     self.network[index].prev_biases[n_index] = b_res + self.network[index].prev_biases[n_index] * self.momentum
 
-    def train(self, training_data, training_targets, iterations, validation_data=None, validation_targets=None):
+    def train(self, training_data, training_targets, max_iterations, min_iterations=0, validation_data=None, validation_targets=None):
         if self.early_stopping == -1:
-            for i in range(iterations):
+            for i in range(max_iterations):
+                print(i)
                 self.back_prop(training_data, training_targets)
         elif len(self.network[-1].weights) == 1 and self.early_stopping != -1 and (validation_data is not None or validation_targets is not None):
             max_r_squared = 0.0
             decrease_streak = 0
             val_results = []
-            for i in range(iterations):
+            for i in range(max_iterations):
                 self.back_prop(training_data, training_targets)
                 test_res = self.test(validation_data, validation_targets)[1]
                 val_results.append(test_res)
@@ -216,7 +230,7 @@ class NeuralNet:
                     decrease_streak = 0
                 else:
                     decrease_streak += 1
-                if decrease_streak >= self.early_stopping:
+                if decrease_streak >= self.early_stopping and i > min_iterations:
                     break
             if self.graph:
                 plt.plot(range(1, len(val_results)+1), val_results)
@@ -230,7 +244,7 @@ class NeuralNet:
             return self.forward_prop(data_instance)
         else:
             prob_results = self.forward_prop(data_instance)
-            return prob_results.index(max(prob_results))
+            return np.where(prob_results == max(prob_results))
 
     def test(self, data, targets):
         if len(self.network[-1].weights) == 1:
@@ -241,6 +255,18 @@ class NeuralNet:
             sum_of_squares = sum([(x - average_target)**2 for x in targets])
             means_squared_error = sum([x**2 for x in residual_vals]) / len(data)
             return means_squared_error[0], 1 - (residual_squared / sum_of_squares)[0]
+        else:
+            num_correct = 0
+            model_results = [self.predict(x)[0] for x in data]
+            target_indices = [x.index(1) for x in targets]
+            print("Predictions:")
+            print(model_results)
+            print("Actual:")
+            print(target_indices)
+            for i in range(len(model_results)):
+                if model_results[i] == target_indices[i]:
+                    num_correct += 1
+            return num_correct / len(targets)
 
     def __str__(self):
         output = "\n\n" + self.name + "\n"
@@ -260,21 +286,32 @@ class NeuralNet:
 
 # creates a neural network with a learning rate of 0.01, momentum of 0.9
 # input layer for 8 inputs, hidden layer with 15 neurons and output with 1 neuron
-net = NeuralNet(0.001, [8, 15, 15, 1], momentum=0.0, early_stopping=10, name="COOLING LOAD", graph=True)
+net = NeuralNet(0.001, [8, 15, 15, 1], momentum=0.0, early_stopping=15, name="COOLING LOAD", graph=True)
 house_data = pd.read_csv("energyefficiency.csv")
 
 data_targets = np.array(house_data['cooling load'])
 data_in = net.normalize(np.array(house_data.drop('cooling load', axis=1)))
 
-train_data, temp_data, train_targets, temp_targets = train_test_split(data_in, data_targets, test_size=0.2, random_state=42)
+train_data, temp_data, train_targets, temp_targets = train_test_split(data_in, data_targets, test_size=0.6, random_state=42)
 val_data, test_data, val_targets, test_targets = train_test_split(temp_data, temp_targets, test_size=0.5, random_state=42)
 
 
 print(net)
-net.train(train_data, train_targets, 100, validation_data=val_data, validation_targets=val_targets)
+net.train(train_data, train_targets, 1000, min_iterations=100, validation_data=val_data, validation_targets=val_targets)
 MSE, r2 = net.test(test_data, test_targets)
 print("MSE: " + str(MSE))
 print("R^2: " + str(r2))
 
-print(net.predict(data_in[23]))
-print(data_targets[23])
+#net = NeuralNet(0.0001, [30, 15, 2], momentum=0.0, name="MALIGNANCY")
+#print(net)
+#bc = load_breast_cancer()
+#all_data = bc['data']
+#all_data = net.normalize(all_data)
+#all_targets = bc['target']
+#new_targets = [[1, 0] if x == 0 else [0, 1] for x in all_targets]
+
+#train_data, temp_data, train_targets, temp_targets = train_test_split(all_data, new_targets, test_size=0.6, random_state=42)
+#val_data, test_data, val_targets, test_targets = train_test_split(temp_data, temp_targets, test_size=0.5, random_state=42)
+#net.train(train_data, train_targets, 250)
+#accuracy = net.test(test_data, test_targets)
+#print(accuracy)
