@@ -10,8 +10,9 @@ from sklearn.datasets import load_breast_cancer
 
 
 class NeuralNet:
-    # Layer base class
+    # Layer super class
     class Layer:
+        # layer constructor
         def __init__(self, neuron_count, activation_func=None, gradient_func=None):
             self.neurons = neuron_count
             self.inputs = None
@@ -25,7 +26,7 @@ class NeuralNet:
             self.activation_func = activation_func
             self.gradient_func = gradient_func
 
-        # generates random weights with xavier initialization
+        # generates random weights with normalized xavier weight initialization
         def generate_weights(self, num_out, num_weights):
             lower, upper = -(1.0 * sqrt(6.0) / sqrt(num_weights + num_out)), (1.0 * sqrt(6.0) / sqrt(num_weights + num_out))
             result_weights = np.random.rand(num_out, num_weights)
@@ -49,6 +50,7 @@ class NeuralNet:
             self.outputs = self.activation_func(self.calc_output(data))
             return self.outputs
 
+        # string method for layer class
         def __str__(self):
             if isinstance(self, NeuralNet.InputLayer):
                 return "Input Layer"
@@ -59,13 +61,15 @@ class NeuralNet:
             if isinstance(self, NeuralNet.SoftMaxOutputLayer):
                 return "Softmax Output Layer"
 
-        def ReLu(self, output):
+        @staticmethod
+        def ReLu(output):
             for i in range(len(output)):
                 if output[i] < 0:
                     output[i] = 0
             return output
 
-        def Relu_deriv(self, data):
+        @staticmethod
+        def Relu_deriv(data):
             result = np.zeros([len(data)], dtype=float)
             for i in range(len(data)):
                 if data[i] > 0:
@@ -84,13 +88,16 @@ class NeuralNet:
 
             return neuron_gradients * self.Relu_deriv(self.pre_output)
 
-        def linear_activation(self, data):
+        @staticmethod
+        def linear_activation(data):
             return np.array(data)
 
-        def linear_gradient(self, output, target):
+        @staticmethod
+        def linear_gradient(output, target):
             return np.array([2 * (output[0] - target)])
 
-        def softmax(self, data):
+        @staticmethod
+        def softmax(data):
             denominator = sum(exp(x) for x in data)
             for i in range(len(data)):
                 data[i] = (exp(data[i]) / denominator)
@@ -105,14 +112,14 @@ class NeuralNet:
             return np.array(gradients)
 
         def softmax_gradient(self, outputs, targets):
-            # passed arrays (current output and current target)
             resulting_gradients = []
             soft_derivs = self.softmax_deriv()
             for i in range(len(targets)):
                 resulting_gradients.append(-1 * (targets[i] * (1 / self.outputs[i]) * soft_derivs[i]))
             return np.array(resulting_gradients)
 
-        def cross_entropy_loss(self, output, target):
+        @staticmethod
+        def cross_entropy_loss(output, target):
             expected = np.array(target)
             if len(expected.shape) == 1:
                 expected = np.atleast_2d(expected).T
@@ -132,6 +139,7 @@ class NeuralNet:
         def weight_derivative(delta, output):
             return delta * output
 
+    # Input layer subclass
     class InputLayer(Layer):
         def __init__(self, neuron_count):
             super().__init__(neuron_count)
@@ -140,18 +148,24 @@ class NeuralNet:
         def feed_forward(self, data):
             return data
 
+    # Hidden layer subclass
     class HiddenLayer(Layer):
         def __init__(self, neuron_count):
             super().__init__(neuron_count, self.ReLu, self.ReLu_Gradient)
 
+    # Softmax layer subclass
     class SoftMaxOutputLayer(Layer):
         def __init__(self, neuron_count):
             super().__init__(neuron_count, self.softmax, self.softmax_gradient)
 
+    # Regression layer subclass
     class RegressionOutputLayer(Layer):
         def __init__(self, neuron_count):
             super().__init__(neuron_count, self.linear_activation, self.linear_gradient)
 
+    # Network constructor
+    # learning rate and layer sizes are required
+    # momentum, dropout, early stopping, name, and graphing are all default
     def __init__(self, lr, layer_sizes, momentum=0.0, dropout=1.0, early_stopping=-1, name="Neural Network", graph=False):
         self.lr = lr
         self.momentum = momentum
@@ -161,7 +175,12 @@ class NeuralNet:
         self.build_network(layer_sizes)
         self.name = name
         self.graph = graph
+        self.conversions = False
+        self.conversion_rates = None
 
+    # builds the network using the given n layer sizes, creates one input layer, n-2 hidden layers, and one output layer
+    # whose type is determined by the number the size of the output layer
+    # more than one neuron will use softmax, one neuron will use regression
     def build_network(self, layer_sizes):
         self.network[0] = self.InputLayer(layer_sizes[0])
         for i in range(1, len(layer_sizes) - 1):
@@ -173,24 +192,50 @@ class NeuralNet:
             self.network[-1] = self.RegressionOutputLayer(1)
         self.network[-1].generate_weights(layer_sizes[-1], layer_sizes[-2])
 
-    def normalize(self, data):
-        new_data = data.T
-        for column in range(len(new_data)):
-            col_min = min(new_data[column])
-            col_max = max(new_data[column])
-            for entry in range(len(new_data[column])):
-                new_data[column][entry] = (new_data[column][entry] - col_min) / (col_max - col_min)
-        return new_data.T
+    # min-max normalization for a dataset
+    # val-ranges can be set if every value is in the same known range (pixel values all between 0-255, etc.)
+    def normalize(self, data, val_ranges=None):
+        data = np.array(data)
+        if not self.conversions:
+            if val_ranges:
+                for row in range(len(data)):
+                    for column in range(len(data[column])):
+                        data[row][column] = (data[row][column] - val_ranges[0]) / (val_ranges[1] - val_ranges[0])
+                self.conversion_rates = np.array([[val_ranges[0], val_ranges[1]] for _ in data[0]])
+                self.conversions = True
+                return data
+            else:
+                new_data = data.T
+                all_rates = []
+                for column in range(len(new_data)):
+                    col_min = min(new_data[column])
+                    col_max = max(new_data[column])
+                    for entry in range(len(new_data[column])):
+                        new_data[column][entry] = (new_data[column][entry] - col_min) / (col_max - col_min)
+                    all_rates.append([col_min, col_max])
+                self.conversion_rates = np.array(all_rates)
+                self.conversions = True
+                return new_data.T
+        else:
+            new_data = data.T
+            for column in range(len(new_data)):
+                col_min = self.conversion_rates[column][0]
+                col_max = self.conversion_rates[column][1]
+                for entry in range(len(new_data[column])):
+                    new_data[column][entry] = (new_data[column][entry] - col_min) / (col_max - col_min)
+            return new_data.T
 
-    def forward_prop(self, data):
+    # forward propagation method, uses each layers feed forward method output as the input for the next layer
+    def __forward_prop(self, data):
         for i in range(len(self.network)):
             data = self.network[i].feed_forward(data)
             self.network[i].output = data
         return data
 
-    def back_prop(self, data, targets):
+    # back propagation method, updates the weights and biases of each neuron in each layer
+    def __back_prop(self, data, targets):
         for d_index in range(len(data)):
-            cur_result = self.forward_prop(data[d_index])
+            cur_result = self.__forward_prop(data[d_index])
             cur_label = targets[d_index]
             # output layer delta computation
             next_deltas = self.network[-1].gradient_func(cur_result, cur_label)
@@ -212,17 +257,20 @@ class NeuralNet:
                     self.network[index].biases[n_index] -= b_res + self.network[index].prev_biases[n_index] * self.momentum
                     self.network[index].prev_biases[n_index] = b_res + self.network[index].prev_biases[n_index] * self.momentum
 
+    # training method, repeats back propagation for the max iterations
+    # if min iterations and validation data is provided, will include early stopping in the process
+    # if graphing is enabled, will display a graph of validation accuracy over time
     def train(self, training_data, training_targets, max_iterations, min_iterations=0, validation_data=None, validation_targets=None):
         if self.early_stopping == -1:
             for i in range(max_iterations):
                 print(i)
-                self.back_prop(training_data, training_targets)
+                self.__back_prop(training_data, training_targets)
         elif len(self.network[-1].weights) == 1 and self.early_stopping != -1 and (validation_data is not None or validation_targets is not None):
             max_r_squared = 0.0
             decrease_streak = 0
             val_results = []
             for i in range(max_iterations):
-                self.back_prop(training_data, training_targets)
+                self.__back_prop(training_data, training_targets)
                 test_res = self.test(validation_data, validation_targets)[1]
                 val_results.append(test_res)
                 if test_res > max_r_squared:
@@ -239,70 +287,95 @@ class NeuralNet:
                 plt.title("Validation Accuracy")
                 plt.show()
 
-    def predict(self, data_instance):
+    # prediction method for both categorical and numerical outputs
+    # if model is for regression, returns the single output value of the output layer
+    # if model is for classification, returns the index of the neuron with the highest probability (softmax value)
+    def __predict(self, data_instance):
         if len(self.network[-1].weights) == 1:
-            return self.forward_prop(data_instance)
+            return self.__forward_prop(data_instance)
         else:
-            prob_results = self.forward_prop(data_instance)
+            prob_results = self.__forward_prop(data_instance)
             return np.where(prob_results == max(prob_results))
 
+    def predict(self, data):
+        data = net.normalize(np.array([data]))[0]
+        return self.__predict(data)[0]
+
+    # testing method
+    # for regression, returns the MSE and R^2 values
+    # for classification, returns the accuracy (decimal, not percentage) of testing samples correctly classified
     def test(self, data, targets):
         if len(self.network[-1].weights) == 1:
-            model_results = [self.predict(x) for x in data]
+            model_results = [self.__predict(x) for x in data]
             residual_vals = [targets[x] - model_results[x] for x in range(len(model_results))]
             residual_squared = sum([x**2 for x in residual_vals])
             average_target = sum(targets) / len(targets)
             sum_of_squares = sum([(x - average_target)**2 for x in targets])
-            means_squared_error = sum([x**2 for x in residual_vals]) / len(data)
-            return means_squared_error[0], 1 - (residual_squared / sum_of_squares)[0]
+            mean_squared_error = sum([x**2 for x in residual_vals]) / len(data)
+            return mean_squared_error[0], 1 - (residual_squared / sum_of_squares)[0]
         else:
             num_correct = 0
-            model_results = [self.predict(x)[0] for x in data]
+            model_results = [self.__predict(x)[0] for x in data]
             target_indices = [x.index(1) for x in targets]
-            print("Predictions:")
-            print(model_results)
-            print("Actual:")
-            print(target_indices)
             for i in range(len(model_results)):
                 if model_results[i] == target_indices[i]:
                     num_correct += 1
             return num_correct / len(targets)
 
+    # string method for NeuralNet object
+    # returns a string including the network name, layers, and layer sizes, along with the total connections
     def __str__(self):
         output = "\n\n" + self.name + "\n"
         output += "_____________________________________________________\n"
-        output += "Learning Rate: " + str(self.lr) + " | Momentum: " + str(self.momentum) + "\n"
+        output += "Learning Rate: " + str(self.lr)
+        if self.momentum != 0.0:
+            output += " | Momentum: " + str(self.momentum)
+        if self.dropout != 1.0:
+            output += " | Dropout: " + str(self.dropout)
+        if self.early_stopping != -1:
+            output += " | Early Stopping: " + str(self.early_stopping)
+        output += "\n"
         output += "_____________________________________________________\n"
-        output += "Input Layer Size: " + str(self.network[0].neurons) + " neurons\n"
+        output += str(self.network[0]) + " Size: " + str(self.network[0].neurons) + " neurons\n"
         output += "---------------------------\n"
         for i in range(1, len(self.network) - 1):
-            output += "Hidden Layer " + str(i) + " Size: " + str(self.network[i].neurons) + " neurons\n"
+            output += str(self.network[i]) + " " + str(i) + " Size: " + str(self.network[i].neurons) + " neurons\n"
             output += "---------------------------\n"
-        output += "Output Layer Size: " + str(self.network[-1].neurons) + " neurons\n"
+        output += str(self.network[-1]) + " Size: " + str(self.network[-1].neurons) + " neuron(s)\n"
         output += "_____________________________________________________\n"
         output += "Total Connections: " + str(sum(self.network[x].neurons * self.network[x - 1].neurons for x in range(1, len(self.network))))
         return output
 
 
-# creates a neural network with a learning rate of 0.01, momentum of 0.9
-# input layer for 8 inputs, hidden layer with 15 neurons and output with 1 neuron
-net = NeuralNet(0.001, [8, 15, 15, 1], momentum=0.0, early_stopping=15, name="COOLING LOAD", graph=True)
+# creates a neural network with a learning rate of 0.001, early stopping at 15 iterations, and graphing enabled
+# input layer for 8 inputs, two hidden layers with 15 neurons and output layer with 1 neuron
+net = NeuralNet(0.001, [8, 15, 15, 1], early_stopping=15, name="COOLING LOAD", graph=True)
+# loads house data
 house_data = pd.read_csv("energyefficiency.csv")
-
+# creates target array
 data_targets = np.array(house_data['cooling load'])
-data_in = net.normalize(np.array(house_data.drop('cooling load', axis=1)))
-
-train_data, temp_data, train_targets, temp_targets = train_test_split(data_in, data_targets, test_size=0.6, random_state=42)
-val_data, test_data, val_targets, test_targets = train_test_split(temp_data, temp_targets, test_size=0.5, random_state=42)
-
-
+# normalizes input data
+data_in = np.array(house_data.drop('cooling load', axis=1))
+# splits the dataset into training, validation, and testing datasets
+train_data, temp_data, train_targets, temp_targets = train_test_split(data_in, data_targets, test_size=0.6)
+val_data, test_data, val_targets, test_targets = train_test_split(temp_data, temp_targets, test_size=0.5)
+# normalizes all datasets
+train_data = net.normalize(train_data)
+val_data = net.normalize(val_data)
+test_data = net.normalize(test_data)
+# prints the network to the console
 print(net)
-net.train(train_data, train_targets, 1000, min_iterations=100, validation_data=val_data, validation_targets=val_targets)
+# trains the network between 100-1000 iterations with early stopping enabled
+net.train(train_data, train_targets, 1000, min_iterations=200, validation_data=val_data, validation_targets=val_targets)
+# tests the fit of the neural network to the testing data
 MSE, r2 = net.test(test_data, test_targets)
+# prints testing results to the console
 print("MSE: " + str(MSE))
 print("R^2: " + str(r2))
 
-#net = NeuralNet(0.0001, [30, 15, 2], momentum=0.0, name="MALIGNANCY")
+# creates a neural network with a learning rate of 0.0001
+# input layer for 30 inputs, hidden layer with 15 neurons and output with 2 neurons
+#net = NeuralNet(0.0001, [30, 15, 2], name="MALIGNANCY")
 #print(net)
 #bc = load_breast_cancer()
 #all_data = bc['data']
