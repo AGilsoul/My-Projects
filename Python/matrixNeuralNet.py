@@ -166,8 +166,9 @@ class NeuralNet:
     # Network constructor
     # learning rate and layer sizes are required
     # momentum, dropout, early stopping, name, and graphing are all default
-    def __init__(self, lr, layer_sizes, momentum=0.0, dropout=1.0, early_stopping=-1, name="Neural Network", graph=False):
+    def __init__(self, lr, layer_sizes, momentum=0.0, dropout=1.0, early_stopping=-1, weight_decay=0.0, name="Neural Network", graph=False):
         self.lr = lr
+        self.weight_decay = weight_decay
         self.momentum = momentum
         self.dropout = dropout
         self.early_stopping = early_stopping
@@ -250,9 +251,11 @@ class NeuralNet:
             for index in reversed(range(1, len(self.network))):
                 for n_index in range(len(self.network[index].weights)):
                     for w_index in range(len(self.network[index].weights[n_index])):
-                        w_res = self.network[index].weight_derivative(self.network[index].deltas[n_index], self.network[index].inputs[w_index]) * self.lr
-                        self.network[index].weights[n_index][w_index] -= w_res + self.network[index].prev_gradients[n_index][w_index] * self.momentum
-                        self.network[index].prev_gradients[n_index][w_index] = w_res + self.network[index].prev_gradients[n_index][w_index] * self.momentum
+                        weight_val = self.network[index].weights[n_index][w_index]
+                        w_deriv = self.network[index].weight_derivative(self.network[index].deltas[n_index], self.network[index].inputs[w_index]) + (2 * self.weight_decay * weight_val)
+                        gradient = w_deriv * self.lr + (self.network[index].prev_gradients[n_index][w_index] * self.momentum)
+                        self.network[index].weights[n_index][w_index] -= gradient
+                        self.network[index].prev_gradients[n_index][w_index] = gradient
                     b_res = self.network[index].deltas[n_index] * self.lr
                     self.network[index].biases[n_index] -= b_res + self.network[index].prev_biases[n_index] * self.momentum
                     self.network[index].prev_biases[n_index] = b_res + self.network[index].prev_biases[n_index] * self.momentum
@@ -263,7 +266,6 @@ class NeuralNet:
     def train(self, training_data, training_targets, max_iterations, min_iterations=0, validation_data=None, validation_targets=None):
         if self.early_stopping == -1:
             for i in range(max_iterations):
-                print(i)
                 self.__back_prop(training_data, training_targets)
         elif len(self.network[-1].weights) == 1 and self.early_stopping != -1 and (validation_data is not None or validation_targets is not None):
             max_r_squared = 0.0
@@ -286,6 +288,27 @@ class NeuralNet:
                 plt.xlabel("Iterations")
                 plt.title("Validation Accuracy")
                 plt.show()
+        elif len(self.network[-1].weights) != 1 and self.early_stopping != -1 and (validation_data is not None or validation_targets is not None):
+            max_accuracy = 0.0
+            decrease_streak = 0
+            val_results = []
+            for i in range(max_iterations):
+                self.__back_prop(training_data, training_targets)
+                test_res = self.test(validation_data, validation_targets)
+                val_results.append(test_res)
+                if test_res > max_accuracy:
+                    max_accuracy = test_res
+                    decrease_streak = 0
+                else:
+                    decrease_streak += 1
+                if decrease_streak >= self.early_stopping and i > min_iterations:
+                    break
+            if self.graph:
+                plt.plot(range(1, len(val_results) + 1), val_results)
+                plt.ylabel("Accuracy")
+                plt.xlabel("Iterations")
+                plt.title("Validation Accuracy")
+                plt.show()
 
     # prediction method for both categorical and numerical outputs
     # if model is for regression, returns the single output value of the output layer
@@ -298,7 +321,7 @@ class NeuralNet:
             return np.where(prob_results == max(prob_results))
 
     def predict(self, data):
-        data = net.normalize(np.array([data]))[0]
+        data = self.normalize(np.array([data]))[0]
         return self.__predict(data)[0]
 
     # testing method
@@ -347,44 +370,51 @@ class NeuralNet:
         return output
 
 
-# creates a neural network with a learning rate of 0.001, early stopping at 15 iterations, and graphing enabled
-# input layer for 8 inputs, two hidden layers with 15 neurons and output layer with 1 neuron
-net = NeuralNet(0.001, [8, 15, 15, 1], early_stopping=15, name="COOLING LOAD", graph=True)
-# loads house data
-house_data = pd.read_csv("energyefficiency.csv")
-# creates target array
-data_targets = np.array(house_data['cooling load'])
-# normalizes input data
-data_in = np.array(house_data.drop('cooling load', axis=1))
-# splits the dataset into training, validation, and testing datasets
-train_data, temp_data, train_targets, temp_targets = train_test_split(data_in, data_targets, test_size=0.6)
-val_data, test_data, val_targets, test_targets = train_test_split(temp_data, temp_targets, test_size=0.5)
-# normalizes all datasets
-train_data = net.normalize(train_data)
-val_data = net.normalize(val_data)
-test_data = net.normalize(test_data)
-# prints the network to the console
-print(net)
-# trains the network between 100-1000 iterations with early stopping enabled
-net.train(train_data, train_targets, 1000, min_iterations=200, validation_data=val_data, validation_targets=val_targets)
-# tests the fit of the neural network to the testing data
-MSE, r2 = net.test(test_data, test_targets)
-# prints testing results to the console
-print("MSE: " + str(MSE))
-print("R^2: " + str(r2))
+def energy_config():
+    # creates a neural network with a learning rate of 0.001, early stopping at 15 iterations, and graphing enabled
+    # input layer for 8 inputs, two hidden layers with 15 neurons and output layer with 1 neuron
+    net = NeuralNet(0.001, [8, 15, 15, 1], early_stopping=15, name="COOLING LOAD", graph=True)
+    # loads house data
+    house_data = pd.read_csv("resources/energyefficiency.csv")
+    # creates target array
+    data_targets = np.array(house_data['cooling load'])
+    # normalizes input data
+    data_in = np.array(house_data.drop('cooling load', axis=1))
+    # splits the dataset into training, validation, and testing datasets
+    train_data, temp_data, train_targets, temp_targets = train_test_split(data_in, data_targets, test_size=0.6)
+    val_data, test_data, val_targets, test_targets = train_test_split(temp_data, temp_targets, test_size=0.5)
+    # normalizes all datasets
+    train_data = net.normalize(train_data)
+    val_data = net.normalize(val_data)
+    test_data = net.normalize(test_data)
+    # prints the network to the console
+    print(net)
+    # trains the network between 100-1000 iterations with early stopping enabled
+    net.train(train_data, train_targets, 1000, min_iterations=200, validation_data=val_data, validation_targets=val_targets)
+    # tests the fit of the neural network to the testing data
+    MSE, r2 = net.test(test_data, test_targets)
+    # prints testing results to the console
+    print("MSE: " + str(MSE))
+    print("R^2: " + str(r2))
 
-# creates a neural network with a learning rate of 0.0001
-# input layer for 30 inputs, hidden layer with 15 neurons and output with 2 neurons
-#net = NeuralNet(0.0001, [30, 15, 2], name="MALIGNANCY")
-#print(net)
-#bc = load_breast_cancer()
-#all_data = bc['data']
-#all_data = net.normalize(all_data)
-#all_targets = bc['target']
-#new_targets = [[1, 0] if x == 0 else [0, 1] for x in all_targets]
 
-#train_data, temp_data, train_targets, temp_targets = train_test_split(all_data, new_targets, test_size=0.6, random_state=42)
-#val_data, test_data, val_targets, test_targets = train_test_split(temp_data, temp_targets, test_size=0.5, random_state=42)
-#net.train(train_data, train_targets, 250)
-#accuracy = net.test(test_data, test_targets)
-#print(accuracy)
+def tumor_config():
+    # creates a neural network with a learning rate of 0.0001
+    # input layer for 30 inputs, hidden layer with 15 neurons and output with 2 neurons
+    net = NeuralNet(0.0001, [30, 15, 2], early_stopping=30, dropout=0.8, name="MALIGNANCY", graph=True)
+    print(net)
+    bc = load_breast_cancer()
+    all_data = bc['data']
+    all_data = net.normalize(all_data)
+    all_targets = bc['target']
+    new_targets = [[1, 0] if x == 0 else [0, 1] for x in all_targets]
+
+    train_data, temp_data, train_targets, temp_targets = train_test_split(all_data, new_targets, test_size=0.6, random_state=42)
+    val_data, test_data, val_targets, test_targets = train_test_split(temp_data, temp_targets, test_size=0.5, random_state=42)
+    net.train(train_data, train_targets, 1000, min_iterations=250, validation_data=val_data, validation_targets=val_targets)
+    accuracy = net.test(test_data, test_targets)
+    print(accuracy)
+
+
+energy_config()
+# tumor_config()
