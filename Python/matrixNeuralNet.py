@@ -1,6 +1,3 @@
-import random
-
-import mpmath
 import numpy as np
 from math import sqrt, exp
 import pandas as pd
@@ -16,8 +13,8 @@ class NeuralNet:
         def __init__(self, neuron_count, activation_func=None, gradient_func=None):
             self.neurons = neuron_count
             self.inputs = None
-            self.pre_output = None
-            self.outputs = None
+            self.pre_outputs = None
+            self.activated_outputs = None
             self.weights = None
             self.prev_gradients = None
             self.deltas = None
@@ -41,14 +38,14 @@ class NeuralNet:
             data = np.dot(self.weights, data)
             for i in range(len(data)):
                 data[i] += self.biases[i]
-            self.pre_output = data
+            self.pre_outputs = data
             return data
 
         # applies activation function to weighted sum
         def feed_forward(self, data):
             self.inputs = data
-            self.outputs = self.activation_func(self.calc_output(data))
-            return self.outputs
+            self.activated_outputs = self.activation_func(self.calc_output(data))
+            return self.activated_outputs
 
         # string method for layer class
         def __str__(self):
@@ -86,7 +83,7 @@ class NeuralNet:
                     total += next_layer.weights[n][weight_index] * next_deltas[n]
                 neuron_gradients[weight_index] = total
 
-            return neuron_gradients * self.Relu_deriv(self.pre_output)
+            return neuron_gradients * self.Relu_deriv(self.pre_outputs)
 
         @staticmethod
         def linear_activation(data):
@@ -105,18 +102,19 @@ class NeuralNet:
 
         # working on this still
         def softmax_deriv(self):
-            denominator = sum(exp(x) for x in self.pre_output)
+            denominator = sum(exp(x) for x in self.pre_outputs)
             gradients = []
-            for i in range(len(self.pre_output)):
-                gradients.append((exp(self.pre_output[i]) * denominator - exp(self.pre_output[i])**2)/(denominator**2))
+            for i in range(len(self.pre_outputs)):
+                gradients.append((exp(self.pre_outputs[i]) * denominator - exp(self.pre_outputs[i])**2)/(denominator**2))
             return np.array(gradients)
 
         def softmax_gradient(self, outputs, targets):
-            resulting_gradients = []
-            soft_derivs = self.softmax_deriv()
-            for i in range(len(targets)):
-                resulting_gradients.append(-1 * (targets[i] * (1 / self.outputs[i]) * soft_derivs[i]))
-            return np.array(resulting_gradients)
+            # resulting_gradients = []
+            # soft_derivs = self.softmax_deriv()
+            # for i in range(len(targets)):
+                # resulting_gradients.append(-1 * (targets[i] * (1 / self.activated_outputs[i]) * soft_derivs[i]))
+            # return np.array(resulting_gradients)
+            return outputs - targets
 
         @staticmethod
         def cross_entropy_loss(output, target):
@@ -200,7 +198,7 @@ class NeuralNet:
         if not self.conversions:
             if val_ranges:
                 for row in range(len(data)):
-                    for column in range(len(data[column])):
+                    for column in range(len(data[row])):
                         data[row][column] = (data[row][column] - val_ranges[0]) / (val_ranges[1] - val_ranges[0])
                 self.conversion_rates = np.array([[val_ranges[0], val_ranges[1]] for _ in data[0]])
                 self.conversions = True
@@ -278,9 +276,9 @@ class NeuralNet:
                 if test_res > max_r_squared:
                     max_r_squared = test_res
                     decrease_streak = 0
-                else:
+                elif i >= min_iterations:
                     decrease_streak += 1
-                if decrease_streak >= self.early_stopping and i > min_iterations:
+                if decrease_streak >= self.early_stopping:
                     break
             if self.graph:
                 plt.plot(range(1, len(val_results)+1), val_results)
@@ -299,9 +297,9 @@ class NeuralNet:
                 if test_res > max_accuracy:
                     max_accuracy = test_res
                     decrease_streak = 0
-                else:
+                elif i >= min_iterations:
                     decrease_streak += 1
-                if decrease_streak >= self.early_stopping and i > min_iterations:
+                if decrease_streak >= self.early_stopping:
                     break
             if self.graph:
                 plt.plot(range(1, len(val_results) + 1), val_results)
@@ -373,7 +371,7 @@ class NeuralNet:
 def energy_config():
     # creates a neural network with a learning rate of 0.001, early stopping at 15 iterations, and graphing enabled
     # input layer for 8 inputs, two hidden layers with 15 neurons and output layer with 1 neuron
-    net = NeuralNet(0.001, [8, 15, 15, 1], early_stopping=15, name="COOLING LOAD", graph=True)
+    net = NeuralNet(0.001, [8, 30, 1], early_stopping=15, name="COOLING LOAD", graph=True)
     # loads house data
     house_data = pd.read_csv("resources/energyefficiency.csv")
     # creates target array
@@ -390,7 +388,7 @@ def energy_config():
     # prints the network to the console
     print(net)
     # trains the network between 100-1000 iterations with early stopping enabled
-    net.train(train_data, train_targets, 1000, min_iterations=200, validation_data=val_data, validation_targets=val_targets)
+    net.train(train_data, train_targets, 1000, min_iterations=250, validation_data=val_data, validation_targets=val_targets)
     # tests the fit of the neural network to the testing data
     MSE, r2 = net.test(test_data, test_targets)
     # prints testing results to the console
@@ -401,7 +399,7 @@ def energy_config():
 def tumor_config():
     # creates a neural network with a learning rate of 0.0001
     # input layer for 30 inputs, hidden layer with 15 neurons and output with 2 neurons
-    net = NeuralNet(0.0001, [30, 15, 2], early_stopping=30, dropout=0.8, name="MALIGNANCY", graph=True)
+    net = NeuralNet(0.01, [30, 15, 2], early_stopping=5, name="MALIGNANCY", graph=True)
     print(net)
     bc = load_breast_cancer()
     all_data = bc['data']
@@ -409,12 +407,12 @@ def tumor_config():
     all_targets = bc['target']
     new_targets = [[1, 0] if x == 0 else [0, 1] for x in all_targets]
 
-    train_data, temp_data, train_targets, temp_targets = train_test_split(all_data, new_targets, test_size=0.6, random_state=42)
-    val_data, test_data, val_targets, test_targets = train_test_split(temp_data, temp_targets, test_size=0.5, random_state=42)
-    net.train(train_data, train_targets, 1000, min_iterations=250, validation_data=val_data, validation_targets=val_targets)
+    train_data, temp_data, train_targets, temp_targets = train_test_split(all_data, new_targets, test_size=0.6)
+    val_data, test_data, val_targets, test_targets = train_test_split(temp_data, temp_targets, test_size=0.5)
+    net.train(train_data, train_targets, 500, min_iterations=20, validation_data=val_data, validation_targets=val_targets)
     accuracy = net.test(test_data, test_targets)
-    print(accuracy)
+    print("{:.2f}%".format(accuracy * 100))
 
 
-energy_config()
-# tumor_config()
+# energy_config()
+tumor_config()
