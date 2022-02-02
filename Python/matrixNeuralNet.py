@@ -1,3 +1,4 @@
+import keras.utils.np_utils
 import numpy as np
 from math import sqrt, exp
 import pandas as pd
@@ -176,6 +177,7 @@ class NeuralNet:
         self.graph = graph
         self.conversions = False
         self.conversion_rates = None
+        self.prev_trained = False
 
     # builds the network using the given n layer sizes, creates one input layer, n-2 hidden layers, and one output layer
     # whose type is determined by the number the size of the output layer
@@ -198,6 +200,7 @@ class NeuralNet:
         if not self.conversions:
             if val_ranges:
                 for row in range(len(data)):
+                    print(row)
                     for column in range(len(data[row])):
                         data[row][column] = (data[row][column] - val_ranges[0]) / (val_ranges[1] - val_ranges[0])
                 self.conversion_rates = np.array([[val_ranges[0], val_ranges[1]] for _ in data[0]])
@@ -258,20 +261,29 @@ class NeuralNet:
                     self.network[index].biases[n_index] -= b_res + self.network[index].prev_biases[n_index] * self.momentum
                     self.network[index].prev_biases[n_index] = b_res + self.network[index].prev_biases[n_index] * self.momentum
 
+    def __back_prop_minibatch(self, data, targets):
+        return
+
     # training method, repeats back propagation for the max iterations
     # if min iterations and validation data is provided, will include early stopping in the process
     # if graphing is enabled, will display a graph of validation accuracy over time
     def train(self, training_data, training_targets, max_iterations, min_iterations=0, validation_data=None, validation_targets=None):
+        if self.prev_trained:
+            self.reset_for_training()
         if self.early_stopping == -1:
             for i in range(max_iterations):
+                print(i)
                 self.__back_prop(training_data, training_targets)
         elif len(self.network[-1].weights) == 1 and self.early_stopping != -1 and (validation_data is not None or validation_targets is not None):
             max_r_squared = 0.0
             decrease_streak = 0
             val_results = []
+            train_results = []
             for i in range(max_iterations):
                 self.__back_prop(training_data, training_targets)
+                train_res = self.test(training_data, training_targets)[1]
                 test_res = self.test(validation_data, validation_targets)[1]
+                train_results.append(train_res)
                 val_results.append(test_res)
                 if test_res > max_r_squared:
                     max_r_squared = test_res
@@ -281,18 +293,23 @@ class NeuralNet:
                 if decrease_streak >= self.early_stopping:
                     break
             if self.graph:
-                plt.plot(range(1, len(val_results)+1), val_results)
+                plt.plot(range(1, len(val_results)+1), val_results, label='Validation')
+                plt.plot(range(1, len(train_results)+1), train_results, label='Training')
                 plt.ylabel("R^2")
                 plt.xlabel("Iterations")
-                plt.title("Validation Accuracy")
+                plt.title("Training/Validation Accuracy")
+                plt.legend()
                 plt.show()
         elif len(self.network[-1].weights) != 1 and self.early_stopping != -1 and (validation_data is not None or validation_targets is not None):
             max_accuracy = 0.0
             decrease_streak = 0
+            train_results = []
             val_results = []
             for i in range(max_iterations):
                 self.__back_prop(training_data, training_targets)
+                train_res = self.test(training_data, training_targets)
                 test_res = self.test(validation_data, validation_targets)
+                train_results.append(train_res)
                 val_results.append(test_res)
                 if test_res > max_accuracy:
                     max_accuracy = test_res
@@ -302,11 +319,13 @@ class NeuralNet:
                 if decrease_streak >= self.early_stopping:
                     break
             if self.graph:
-                plt.plot(range(1, len(val_results) + 1), val_results)
+                plt.plot(range(1, len(val_results) + 1), val_results, label='Validation')
+                plt.plot(range(1, len(train_results) + 1), train_results, label='Training')
                 plt.ylabel("Accuracy")
                 plt.xlabel("Iterations")
-                plt.title("Validation Accuracy")
+                plt.title("Training/Validation Accuracy")
                 plt.show()
+        self.prev_trained = True
 
     # prediction method for both categorical and numerical outputs
     # if model is for regression, returns the single output value of the output layer
@@ -343,6 +362,13 @@ class NeuralNet:
                     num_correct += 1
             return num_correct / len(targets)
 
+    def reset_for_training(self):
+        for layer in range(len(self.network)):
+            for n in range(len(self.network[layer].prev_gradients)):
+                self.network[layer].prev_biases[n] = 0
+                for g in range(len(self.network[layer].prev_gradients[n])):
+                    self.network[layer].prev_gradients[n][g] = 0
+
     # string method for NeuralNet object
     # returns a string including the network name, layers, and layer sizes, along with the total connections
     def __str__(self):
@@ -371,7 +397,7 @@ class NeuralNet:
 def energy_config():
     # creates a neural network with a learning rate of 0.001, early stopping at 15 iterations, and graphing enabled
     # input layer for 8 inputs, two hidden layers with 15 neurons and output layer with 1 neuron
-    net = NeuralNet(0.001, [8, 30, 1], early_stopping=15, name="COOLING LOAD", graph=True)
+    net = NeuralNet(0.001, [8, 15, 15, 1], early_stopping=15, name="COOLING LOAD", graph=True)
     # loads house data
     house_data = pd.read_csv("resources/energyefficiency.csv")
     # creates target array
@@ -414,5 +440,5 @@ def tumor_config():
     print("{:.2f}%".format(accuracy * 100))
 
 
-# energy_config()
-tumor_config()
+energy_config()
+# tumor_config()
