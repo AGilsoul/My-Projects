@@ -3,16 +3,6 @@ Project Descriptions:
 
 HIGHLIGHTED PROJECTS - These are the projects that I am most proud of, the descriptions of which can be found with a ** next to them, most of which are C++. My favorite and most complex projects are my C++ NeuralNetwork and Python matrixNeuralNet.
 
-KNearestNeighbors
-
-KMeansClustering
-
-LinearRegression
-
-NeuralNetwork
-
-matrixNeuralNet
-
 
 C++:
 
@@ -40,13 +30,3 @@ C++:
   BreastCancerClassifier: In this program, I used the K-Nearest Neighbors machine learning algorithm from the sklearn library to determine whether patients have breast cancer based on a myriad of factors that were recorded for each patient. The algorithm is then tested, and a graph is shown displaying its accuracy on a validation set of patients with a different number of "K-Nearest Neighbors". It can be seen that the accuracy of the algorithm reaches about 96.5% when K is set to 10. The algorithm can be tested on a different arrangment of the data by changing the random state in the code.
   
   ***matrixNeuralNet: This is my second neural network that I've written from scratch, only this time in Python. I utilized the NumPy library to simplify the code and by using matrix dot products to find the weighted sum of neurons for an entire layer rather than having to do so individually. This not only makes the code itself shorter, but increases the readability. It has been tested on one dataset so far that includes data on residential structures, and can predict the cooling energy load of these structures with an R^2 value of up to 0.96.
-  
-  
-Java:
-
-  DataVisualization: In this project, I created a binary search tree using Java rather than C++. I also coded a simple GUI that allows the user to select certain nodes on the tree, delete certain nodes, and insert new nodes.
-  
-
-JavaScript:
-
-  ScoutingServer: This file contains code for a server taht I wrote in the file main.js. The purpose of this server is to receive data from an app that I created to assist in the scouting process of FRC competitions. The server receives data sent from devices using the app, and writes it to a CSV file to be used by another program that will interpret the data.
