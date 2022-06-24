@@ -15,27 +15,46 @@ int main() {
     string placeHolder;
     int actualDataChannels = 1;
     int numDupChannels = 1;
-    cout << "Constructing Convolutional Neural Network..." << endl;
-    ConvNet cnn(numDupChannels, 28, 0.001, 0.9, true);
-    cnn.addKernel(3, 5, true, true);
-    cnn.addKernel(9, 5, true, true);
-    cnn.addHiddenLayer(128);
+    ConvNet cnn(numDupChannels, 28, 0.001, 0.0);
+    cnn.addKernel(9, 3, true, true);
+    cnn.addKernel(18, 3, true, true);
+    cnn.addHiddenLayer(120);
+    cnn.addHiddenLayer(84);
     cnn.addOutputLayer(10);
-    cout << "Done" << endl << endl;
+    cnn.printNet();
+    cout << endl;
 
     vector<tensor> data;
     vector<int> labels;
-    cout << "Reading file..." << endl;
+    cout << "Reading File..." << endl;
     readMnistFile(data, labels, actualDataChannels, numDupChannels);
+
+    cout << "Randomizing Data..." << endl;
+    vector<int> indexes(data.size());
+    for (int i = 0; i < data.size(); ++i)
+        indexes[i] = i;
+
+    std::random_shuffle(indexes.begin(), indexes.end());
+    vector<tensor> newData(data.size());
+    vector<int> newExpect(data.size());
+    for (unsigned int i = 0; i < data.size(); i++) {
+        newData[i] = data[indexes[i]];
+        newExpect[i] = labels[indexes[i]];
+    }
+    data = newData;
+    labels = newExpect;
+
     cout << "Normalizing..." << endl;
     normalize(data, {{0,255}});
-    cout << "Splitting Data..." << endl << endl;
     vector<tensor> trainData(data.begin(), data.begin() + 40000);
     vector<int> trainLabels(labels.begin(), labels.begin() + 40000);
     vector<tensor> testData(data.begin() + 40000, data.end());
     vector<int> testLabels(labels.begin() + 40000, labels.end());
     cout << "Fitting Model..." << endl;
-    cnn.fitModel(trainData, trainLabels, 5, testData, testLabels);
+    cnn.fitModel(trainData, trainLabels, 10, 1, true);
+    cout << endl << "Testing Model..." << endl;
+    auto res = cnn.eval(testData, testLabels) * 100;
+    cout << "Test Accuracy: " << setprecision(4) << res << "%" << endl;
     cout << "Press x to continue" << endl;
     cin >> placeHolder;
     return 0;
