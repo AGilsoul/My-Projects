@@ -14,13 +14,13 @@ void readMnistFile(vector<tensor>& testData, vector<int>& expected, int numChann
 int main() {
     string placeHolder;
     int actualDataChannels = 1;
-    int numDupChannels = 1;
+    int numDupChannels = 3;
     ConvNet cnn(numDupChannels, 28, 0.001, 0.0);
     cnn.addKernel(9, 3, true, true);
     cnn.addKernel(18, 3, true, true);
-    cnn.addHiddenLayer(120);
-    cnn.addHiddenLayer(84);
-    cnn.addOutputLayer(10);
+    cnn.addDenseLayer(120, true);
+    cnn.addDenseLayer(84, true);
+    cnn.addDenseLayer(10, false);
     cnn.printNet();
     cout << endl;
 
@@ -51,10 +51,22 @@ int main() {
     vector<tensor> testData(data.begin() + 40000, data.end());
     vector<int> testLabels(labels.begin() + 40000, labels.end());
     cout << "Fitting Model..." << endl;
-    cnn.fitModel(trainData, trainLabels, 10, 1, true);
+    cnn.fitModel(trainData, trainLabels, 5, 1, true);
     cout << endl << "Testing Model..." << endl;
     auto res = cnn.eval(testData, testLabels) * 100;
-    cout << "Test Accuracy: " << setprecision(4) << res << "%" << endl;
+    cout << endl << "Test Accuracy: " << setprecision(4) << res << "%" << endl;
+    cout << endl << "Saving..." << endl;
+
+    /*
+    bool saved = cnn.save("CNNModel.csv");
+    if (saved) {
+        cout << "Save Successful" << endl;
+    }
+    else {
+        cout << "Error While Saving" << endl;
+    }
+    */
+
     cout << "Press x to continue" << endl;
     cin >> placeHolder;
     return 0;
