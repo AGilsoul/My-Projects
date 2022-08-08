@@ -14,53 +14,46 @@ using std::thread;
 using std::setprecision;
 using std::shared_ptr;
 using std::ostream;
+using std::ofstream;
 
 class ConvNet {
 public:
     ConvNet(int inputChannelCount, int inputDim, double lr, double m=0.0): inputChannelCount(inputChannelCount), inputDim(inputDim), lr(lr), m(m) {}
 
     void addKernel(int numKernels, int kernelDim, bool padding=true, bool pooling=false, const string& poolType="avg") {
-        if (kernels.empty()) {
+        int poolInt = 0;
+        if (pooling) {
+            if (poolType == "max") {
+                poolInt = 1;
+            }
+            else if (poolType == "avg") {
+                poolInt = 2;
+            }
+        }
+        if (convLayers.empty()) {
             numConnections += numKernels * pow(kernelDim, 2) * inputChannelCount;
-            kernels.push_back(make_shared<KernelLayer>(numKernels, kernelDim, inputChannelCount, inputDim, lr, m, padding, pooling, poolType));
+            convLayers.push_back(make_shared<ConvLayer>(numKernels, kernelDim, inputChannelCount, inputDim, lr, m, padding, poolInt));
         }
         else {
-            numConnections += numKernels * pow(kernelDim, 2) * kernels[kernels.size() - 1]->getNumKernels();
-            kernels.push_back(make_shared<KernelLayer>(numKernels, kernelDim, kernels[kernels.size() - 1]->getNumKernels(), kernels[kernels.size() - 1]->getOutputDim(), lr, m, padding, pooling, poolType));
+            numConnections += numKernels * pow(kernelDim, 2) * convLayers[convLayers.size() - 1]->getNumKernels();
+            convLayers.push_back(make_shared<ConvLayer>(numKernels, kernelDim, convLayers[convLayers.size() - 1]->getNumKernels(), convLayers[convLayers.size() - 1]->getOutputDim(), lr, m, padding, poolInt));
         }
 
     }
 
-    void addHiddenLayer(int numNeurons) {
-        if (kernels.empty()) {
+    void addDenseLayer(int numNeurons, bool hidden) {
+        if (convLayers.empty()) {
             throw exception("Add kernels before dense layers");
         }
 
-        if (hiddenLayers.empty()) {
-            int numInputs = kernels[kernels.size() - 1]->getNumKernels() * pow(kernels[kernels.size() - 1]->getOutputDim(), 2);
-            hiddenLayers.push_back(make_shared<HiddenLayer>(numNeurons, numInputs, lr, m));
+        if (denseLayers.empty()) {
+            int numInputs = convLayers[convLayers.size() - 1]->getNumKernels() * pow(convLayers[convLayers.size() - 1]->getOutputDim(), 2);
+            denseLayers.push_back(make_shared<DenseLayer>(numNeurons, numInputs, lr, m, hidden));
             numConnections += numNeurons * numInputs;
         }
         else {
-            int numInputs = hiddenLayers[hiddenLayers.size() - 1]->getNumNeurons();
-            hiddenLayers.push_back(make_shared<HiddenLayer>(numNeurons, numInputs, lr, m));
-            numConnections += numNeurons * numInputs;
-        }
-    }
-
-    void addOutputLayer(int numNeurons) {
-        if (kernels.empty()) {
-            throw exception("Add kernels before dense layers");
-        }
-
-        if (hiddenLayers.empty()) {
-            int numInputs = kernels[kernels.size() - 1]->getNumKernels() * pow(kernels[kernels.size() - 1]->getOutputDim(), 2);
-            outLayer = make_shared<OutputLayer>(numNeurons, numInputs, lr, m);
-            numConnections += numNeurons * numInputs;
-        }
-        else {
-            int numInputs = hiddenLayers[hiddenLayers.size() - 1]->getNumNeurons();
-            outLayer = make_shared<OutputLayer>(numNeurons, numInputs, lr, m);
+            int numInputs = denseLayers[denseLayers.size() - 1]->getNumNeurons();
+            denseLayers.push_back(make_shared<DenseLayer>(numNeurons, numInputs, lr, m, hidden));
             numConnections += numNeurons * numInputs;
         }
     }
@@ -79,20 +72,20 @@ public:
     }
 
     vector<double> propagate(tensor dataIn) {
-        for (auto & kernel : kernels) {
-            dataIn = kernel->propagate(dataIn);
+        for (auto & convLayer : convLayers) {
+            dataIn = convLayer->propagate(dataIn);
         }
         vector<double> flatData = flattenTensor(dataIn);
-        for (auto & hiddenLayer : hiddenLayers) {
-            flatData = hiddenLayer->propagate(flatData);
+        for (auto & denseLayer : denseLayers) {
+            flatData = denseLayer->propagate(flatData);
         }
-        return outLayer->propagate(flatData);
+        return flatData;
     }
 
     void backPropagate(vector<tensor> trainData, vector<int> trainLabels, int iterations) {
         *this->progressGoal = iterations * trainData.size();
         // set pre kernel delta size
-        vector<double> preKernDeltas(kernels[kernels.size() - 1]->getNumKernels() * pow(kernels[kernels.size() - 1]->getOutputDim(), 2));
+        vector<double> preKernDeltas(convLayers[convLayers.size() - 1]->getNumKernels() * pow(convLayers[convLayers.size() - 1]->getOutputDim(), 2));
         // one-hot encode all labels
         auto labels = oneHotEncode(std::move(trainLabels));
         // for every iteration
@@ -104,25 +97,15 @@ public:
                 // calculate network output
                 vector<double> result = propagate(trainData[dIndex]);
                 // calculate output deltas
-                vector<double> flatDeltas = outLayer->backPropagate(curLabel);
+                vector<double> flatDeltas = denseLayers[denseLayers.size()-1]->backPropagate(curLabel);
 
                 // calculate hidden deltas
-                for (int layerIndex = hiddenLayers.size() - 1; layerIndex >= 0; layerIndex--) {
-                    if (layerIndex == hiddenLayers.size() - 1) {
-                        flatDeltas = hiddenLayers[layerIndex]->backPropagate(flatDeltas, outLayer->getWeights());
-                    }
-                    else {
-                        flatDeltas = hiddenLayers[layerIndex]->backPropagate(flatDeltas, hiddenLayers[layerIndex + 1]->getWeights());
-                    }
+                for (int layerIndex = denseLayers.size() - 2; layerIndex >= 0; layerIndex--) {
+                    flatDeltas = denseLayers[layerIndex]->backPropagate(flatDeltas, denseLayers[layerIndex + 1]->getWeights());
                 }
                 // convert flat deltas to kernel shaped deltas
                 matrix lastFlatWeights;
-                if (hiddenLayers.empty()) {
-                    lastFlatWeights = outLayer->getWeights();
-                }
-                else {
-                    lastFlatWeights = hiddenLayers[0]->getWeights();
-                }
+                lastFlatWeights = denseLayers[0]->getWeights();
                 for (int k = 0; k < preKernDeltas.size(); k++) {
                     double total = 0;
                     for (int d = 0; d < flatDeltas.size(); d++) {
@@ -130,22 +113,21 @@ public:
                     }
                     preKernDeltas[k] = total;
                 }
-                tensor kernDeltas = reshapeVector(preKernDeltas, kernels[kernels.size() - 1]->getNumKernels(), kernels[kernels.size() - 1]->getOutputDim(), kernels[kernels.size() - 1]->getOutputDim());
+                tensor kernDeltas = reshapeVector(preKernDeltas, convLayers[convLayers.size() - 1]->getNumKernels(), convLayers[convLayers.size() - 1]->getOutputDim(), convLayers[convLayers.size() - 1]->getOutputDim());
                 // calculate kernel deltas
-                for (int kernelIndex = kernels.size() - 1; kernelIndex >= 0; kernelIndex--) {
-                    if (kernelIndex != kernels.size() - 1) {
-                        kernDeltas = delPadding(kernDeltas, kernels[kernelIndex + 1]->getPadWidth());
+                for (int kernelIndex = convLayers.size() - 1; kernelIndex >= 0; kernelIndex--) {
+                    if (kernelIndex != convLayers.size() - 1) {
+                        kernDeltas = delPadding(kernDeltas, convLayers[kernelIndex + 1]->getPadWidth());
                     }
-                    kernDeltas = kernels[kernelIndex]->backPropagate(kernDeltas);
+                    kernDeltas = convLayers[kernelIndex]->backPropagate(kernDeltas);
                 }
                 // update layer parameters
-                for (auto & kernel : kernels) {
-                    kernel->update();
+                for (auto & convLayer : convLayers) {
+                    convLayer->update();
                 }
-                for (auto & hiddenLayer : hiddenLayers) {
-                    hiddenLayer->update();
+                for (auto & denseLayer  : denseLayers) {
+                    denseLayer->update();
                 }
-                outLayer->update();
             }
         }
         *doneTraining = true;
@@ -154,7 +136,7 @@ public:
     void miniBatchBackPropagate(vector<tensor> trainData, vector<int> trainLabels, int iterations, int batchSize) {
         *this->progressGoal = iterations * trainData.size();
         // set pre kernel delta size
-        vector<double> preKernDeltas(kernels[kernels.size() - 1]->getNumKernels() * pow(kernels[kernels.size() - 1]->getOutputDim(), 2));
+        vector<double> preKernDeltas(convLayers[convLayers.size() - 1]->getNumKernels() * pow(convLayers[convLayers.size() - 1]->getOutputDim(), 2));
         // one-hot encode all labels
         auto labels = oneHotEncode(std::move(trainLabels));
         // for every iteration
@@ -199,24 +181,15 @@ public:
                     // calculate network output
                     vector<double> result = propagate(allBatchData[bIndex][dIndex]);
                     // calculate output deltas
-                    vector<double> flatDeltas = outLayer->miniBatchBackPropagate(curLabel, batchSize);
+                    vector<double> flatDeltas = denseLayers[denseLayers.size()-1]->miniBatchBackPropagate(curLabel, batchSize);
 
                     // calculate hidden deltas
-                    for (int layerIndex = hiddenLayers.size() - 1; layerIndex >= 0; layerIndex--) {
-                        if (layerIndex == hiddenLayers.size() - 1) {
-                            flatDeltas = hiddenLayers[layerIndex]->miniBatchBackPropagate(flatDeltas, outLayer->getWeights(), batchSize);
-                        } else {
-                            flatDeltas = hiddenLayers[layerIndex]->miniBatchBackPropagate(flatDeltas, hiddenLayers[layerIndex +1]->getWeights(), batchSize);
-                        }
+                    for (int layerIndex = denseLayers.size() - 2; layerIndex >= 0; layerIndex--) {
+                        flatDeltas = denseLayers[layerIndex]->miniBatchBackPropagate(flatDeltas, batchSize, denseLayers[layerIndex +1]->getWeights());
                     }
                     // convert flat deltas to kernel shaped deltas
                     matrix lastFlatWeights;
-                    if (hiddenLayers.empty()) {
-                        lastFlatWeights = outLayer->getWeights();
-                    }
-                    else {
-                        lastFlatWeights = hiddenLayers[0]->getWeights();
-                    }
+                    lastFlatWeights = denseLayers[0]->getWeights();
                     for (int k = 0; k < preKernDeltas.size(); k++) {
                         double total = 0;
                         for (int d = 0; d < flatDeltas.size(); d++) {
@@ -224,28 +197,26 @@ public:
                         }
                         preKernDeltas[k] = total;
                     }
-                    tensor kernDeltas = reshapeVector(preKernDeltas, kernels[kernels.size() - 1]->getNumKernels(),
-                                                      kernels[kernels.size() - 1]->getOutputDim(),
-                                                      kernels[kernels.size() - 1]->getOutputDim());
+                    tensor kernDeltas = reshapeVector(preKernDeltas, convLayers[convLayers.size() - 1]->getNumKernels(),
+                                                      convLayers[convLayers.size() - 1]->getOutputDim(),
+                                                      convLayers[convLayers.size() - 1]->getOutputDim());
                     // calculate kernel deltas
-                    for (int kernelIndex = kernels.size() - 1; kernelIndex >= 0; kernelIndex--) {
-                        if (kernelIndex != kernels.size() - 1) {
-                            kernDeltas = delPadding(kernDeltas, kernels[kernelIndex + 1]->getPadWidth());
+                    for (int convIndex = convLayers.size() - 1; convIndex >= 0; convIndex--) {
+                        if (convIndex != convLayers.size() - 1) {
+                            kernDeltas = delPadding(kernDeltas, convLayers[convIndex + 1]->getPadWidth());
                         }
-                        kernDeltas = kernels[kernelIndex]->miniBatchBackPropagate(kernDeltas, batchSize);
+                        kernDeltas = convLayers[convIndex]->miniBatchBackPropagate(kernDeltas, batchSize);
                     }
                 }
                 // update layer parameters
-                for (auto &kernel: kernels) {
-                    kernel->update();
-                    kernel->resetDeltas();
+                for (auto &convLayer : convLayers) {
+                    convLayer->update();
+                    convLayer->resetDeltas();
                 }
-                for (auto &hiddenLayer: hiddenLayers) {
-                    hiddenLayer->update();
-                    hiddenLayer->resetDeltas();
+                for (auto &denseLayer : denseLayers) {
+                    denseLayer->update();
+                    denseLayer->resetDeltas();
                 }
-                outLayer->update();
-                outLayer->resetDeltas();
             }
         }
         *doneTraining = true;
@@ -302,7 +273,7 @@ public:
     }
 
     matrix oneHotEncode(vector<int> labels) {
-        int numLabels = outLayer->getNumNeurons();
+        int numLabels = denseLayers[denseLayers.size()-1]->getNumNeurons();
         matrix res(labels.size());
         for (int lIndex = 0; lIndex < res.size(); lIndex++) {
             vector<double> newVec(numLabels);
@@ -327,19 +298,88 @@ public:
         cout << "Convolutional Neural Network" << endl;
         cout << "____________________________________________________________________" << endl;
         cout << "Convolution Layers: " << endl;
-        for (int i = 0; i < kernels.size(); i++) {
-            printf("Convolution Layer %d - Kernels: %d\tKernel Dimensions: %d\n", i + 1, kernels[i]->getNumKernels(), kernels[i]->getKernelDim());
+        for (int i = 0; i < convLayers.size(); i++) {
+            printf("Convolution Layer %d - Kernels: %d\tKernel Dimensions: %d\n", i + 1, convLayers[i]->getNumKernels(), convLayers[i]->getKernelDim());
         }
         cout << "____________________________________________________________________" << endl;
         cout << "Dense Layers: " << endl;
-        for (int i = 0; i < kernels.size(); i++) {
-            printf("Dense Layer %d - Neurons: %d\n", i + 1, hiddenLayers[i]->getNumNeurons());
+        for (int i = 0; i < denseLayers.size(); i++) {
+            printf("Dense Layer %d - Neurons: %d\n", i + 1, denseLayers[i]->getNumNeurons());
         }
-        cout << "____________________________________________________________________" << endl;
-        cout << "Output Layer: " << endl;
-        printf("Output Layer - Neurons: %d\n", outLayer->getNumNeurons());
-        cout << "____________________________________________________________________" << endl;
         printf("Num Connections: %d\n", numConnections);
+    }
+
+    /*
+     * file format:
+     * learningRate,momentum,numConnections
+     * numberConvolutionLayers,numberDenseLayers,inputDim,inputChannels
+     * //for every conv layer:
+     * numKernels,kernelDim,inputChannels,inputDim,padWidth,poolingType
+     * *all kernels
+     * //for every dense layer
+     * numNeurons,numWeightsPerNeuron,Hidden?(T/F)
+     * *all weights
+     * *all biases
+     */
+    bool save(string fileName) {
+        try {
+            ofstream saveFile(fileName);
+            if (saveFile) {
+                saveFile << lr << "," << m << "," << numConnections << endl;
+                saveFile << convLayers.size() << "," << denseLayers.size() << "," << inputDim << "," << inputChannelCount << endl;
+                // for every convolution layer
+                for (int cLayer = 0; cLayer < convLayers.size(); cLayer++) {
+                    // current conv layer
+                    shared_ptr<ConvLayer> curLayer = convLayers[cLayer];
+                    saveFile << curLayer->getNumKernels() << "," << curLayer->getKernelDim() << "," << curLayer->getInputChannels() << "," << curLayer->getInputDim() << "," << curLayer->getPadWidth() << "," << curLayer->getPoolType() << endl;
+                    // current layer kernels
+                    vector<tensor> curKernels = curLayer->getKernels();
+                    // for each kernel tensor in the layer
+                    for (int kCount = 0; kCount < curLayer->getNumKernels(); kCount++) {
+                        // for each channel matrix in the kernel
+                        for (int cCount = 0; cCount < curLayer->getInputChannels(); cCount++) {
+                            for (int row = 0; row < curLayer->getKernelDim(); row++) {
+                                saveFile << curKernels[kCount][cCount][row][0];
+                                for (int col = 1; col < curLayer->getKernelDim(); col++) {
+                                    saveFile << "," << curKernels[kCount][cCount][row][col];
+                                }
+                                saveFile << endl;
+                            }
+                        }
+                    }
+                }
+
+                // for every dense layer
+                for (int dLayer = 0; dLayer < denseLayers.size(); dLayer++) {
+                    // current layer
+                    shared_ptr<DenseLayer> curLayer = denseLayers[dLayer];
+                    saveFile << curLayer->getNumNeurons() << "," << curLayer->getNumWeights() << "," << int(curLayer->getHidden()) << endl;
+                    // current layer weights and biases
+                    matrix curWeights = curLayer->getWeights();
+                    vector<double> curBiases = curLayer->getBiases();
+                    // for each neuron in the current layer
+                    for (int nCount = 0; nCount < curLayer->getNumNeurons(); nCount++) {
+                        // for each weight in the current neuron
+                        saveFile << curWeights[nCount][0];
+                        for (int wCount = 1; wCount < curLayer->getNumWeights(); wCount++) {
+                            saveFile << "," << curWeights[nCount][wCount];
+                        }
+                        saveFile << endl;
+                    }
+                    // for each neuron bias in the current layer
+                    saveFile << curBiases[0];
+                    for (int bCount = 1; bCount < curLayer->getNumNeurons(); bCount++) {
+                        saveFile << "," << curBiases[bCount];
+                    }
+                    saveFile << endl;
+                }
+            }
+            saveFile.close();
+        }
+        catch (...) {
+            return false;
+        }
+        return true;
     }
 
 
@@ -380,9 +420,8 @@ private:
     }
 
     matrix convInputs;
-    vector<shared_ptr<KernelLayer>> kernels;
-    vector<shared_ptr<HiddenLayer>> hiddenLayers;
-    shared_ptr<OutputLayer> outLayer;
+    vector<shared_ptr<ConvLayer>> convLayers;
+    vector<shared_ptr<DenseLayer>> denseLayers;
     int inputChannelCount;
     int inputDim;
     shared_ptr<double> curProgress = make_shared<double>(0.0);

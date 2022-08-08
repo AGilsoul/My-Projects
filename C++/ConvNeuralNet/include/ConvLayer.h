@@ -43,12 +43,11 @@ vector<tensor> allocTensVec(int numTensors, int channelCount, int dim, double va
 
 class OutputLayer {
 public:
-    OutputLayer(int numNeurons, int numInputs, double lr, double m ): numNeurons(numNeurons), numInputs(numInputs), lr(lr), m(m) {
+    OutputLayer(int numNeurons, int numInputs, double lr, double m, int outputType): numNeurons(numNeurons), numInputs(numInputs), lr(lr), m(m), outputType(outputType) {
         generateWeights();
         this->prevWeightGradients = allocMatrix(numNeurons, numInputs);
         this->prevBiasGradients = vector<double>(numNeurons);
         this->activatedOutputs = vector<double>(numNeurons);
-        this->unif = uniform_real_distribution<double>(0, 1);
         resetDeltas();
     }
 
@@ -188,39 +187,54 @@ private:
     int numInputs;
     double lr;
     double m;
+    int outputType;
     uniform_real_distribution<double> unif;
     default_random_engine rng;
 };
 
 
-class HiddenLayer {
+class DenseLayer {
 public:
-    HiddenLayer(int numNeurons, int numInputs, double lr, double m): numNeurons(numNeurons), numInputs(numInputs), lr(lr), m(m) {
+    DenseLayer(int numNeurons, int numInputs, double lr, double m, bool hidden): numNeurons(numNeurons), numInputs(numInputs), lr(lr), m(m), hidden(hidden) {
         generateWeights();
         this->prevWeightGradients = allocMatrix(numNeurons, numInputs);
         this->prevBiasGradients = vector<double>(numNeurons);
         this->activatedOutputs = vector<double>(numNeurons);
-        this->unif = uniform_real_distribution<double>(0, 1);
         resetDeltas();
     }
 
     vector<double> propagate(vector<double> dataIn) {
         this->inputs = dataIn;
         weightedSum();
-        ReLu();
+        if (hidden) {
+            ReLu();
+        }
+        else {
+            softmax();
+        }
         return this->activatedOutputs;
     }
 
-    vector<double> backPropagate(vector<double> nextDeltas, matrix nextWeights) {
+    vector<double> backPropagate(vector<double> nextDeltas, matrix nextWeights={{{}}}) {
         // calculate input deltas first and then calculate weight deltas
-        ReLuDeriv(std::move(nextDeltas), nextWeights);
+        if (hidden) {
+            ReLuDeriv(std::move(nextDeltas), nextWeights);
+        }
+        else {
+            softmaxDeriv(std::move(nextDeltas));
+        }
         weightDeriv();
         return this->gradients;
     }
 
-    vector<double> miniBatchBackPropagate(vector<double> nextDeltas, matrix nextWeights, int batchSize) {
+    vector<double> miniBatchBackPropagate(vector<double> nextDeltas, int batchSize, matrix nextWeights={{{}}}) {
         // calculate input deltas first and then calculate weight deltas
-        ReLuDeriv(std::move(nextDeltas), nextWeights);
+        if (hidden) {
+            ReLuDeriv(std::move(nextDeltas), nextWeights);
+        }
+        else {
+            softmaxDeriv(std::move(nextDeltas));
+        }
         miniWeightDeriv(batchSize);
         return this->gradients;
     }
@@ -236,6 +250,10 @@ public:
         }
     }
 
+    bool getHidden() {
+        return hidden;
+    }
+
     int getNumWeights() const {
         return numInputs;
     }
@@ -246,6 +264,10 @@ public:
 
     matrix getWeights() const {
         return weights;
+    }
+
+    vector<double> getBiases() const {
+        return biases;
     }
 
     void resetDeltas() {
@@ -263,6 +285,22 @@ private:
                 this->preOutputs[n] += weights[n][w] * inputs[w];
             }
             this->preOutputs[n] += biases[n];
+        }
+    }
+
+    void softmax() {
+        double denom = 0;
+        for (int n = 0; n < numNeurons; n++) {
+            denom += exp(this->preOutputs[n]);
+        }
+        for (int n = 0; n < numNeurons; n++) {
+            this->activatedOutputs[n] = exp(this->preOutputs[n]) / denom;
+        }
+    }
+
+    void softmaxDeriv(vector<double> nextDeltas) {
+        for (int n = 0; n < numNeurons; n++) {
+            this->gradients[n] = this->activatedOutputs[n] - nextDeltas[n];
         }
     }
 
@@ -354,15 +392,19 @@ private:
     int numInputs;
     double lr;
     double m;
+    bool hidden;
     uniform_real_distribution<double> unif;
     default_random_engine rng;
 };
 
-// FIX THIS FOR CORRECT CONVOLUTION
-class KernelLayer {
+
+class ConvLayer {
 public:
+    //empty constructor
+    ConvLayer() {}
+
     // constructor
-    KernelLayer(int numKernels, int kernelSize, int inputChannels, int inputDim, double lr, double m, bool padding, bool pooling, string poolType): numKernels(numKernels), kernelSize(kernelSize), inputChannels(inputChannels), inputDim(inputDim), lr(lr), m(m), padding(padding), pooling(pooling), poolType(std::move(poolType)) {
+    ConvLayer(int numKernels, int kernelSize, int inputChannels, int inputDim, double lr, double m, bool padding, int poolType): numKernels(numKernels), kernelSize(kernelSize), inputChannels(inputChannels), inputDim(inputDim), lr(lr), m(m), padding(padding), poolType(poolType) {
         // set up rng
         this->unif = uniform_real_distribution<double>(-1, 1);
         this->rng.seed(std::chrono::system_clock::now().time_since_epoch().count());
@@ -376,7 +418,7 @@ public:
         // calc output dimensions of kernel matrices
         this->kernelOutputDim = (inputDim + 2 * padWidth - kernelSize) + 1;
         // re-calc output if pooling enabled
-        if (pooling) {
+        if (poolType != 0) {
             // if output dimension divisible by 2
             if (this->kernelOutputDim % 2 != 0) {
                 this->outputDim = int((this->kernelOutputDim + 1) / 2);
@@ -433,7 +475,7 @@ public:
         }
 
         this->ReLu();
-        if (!pooling) {
+        if (poolType == 0) {
             this->outputs = kernelActivatedOutputs;
         }
         else {
@@ -444,7 +486,7 @@ public:
 
     tensor backPropagate(const tensor& deltas) {
         // if pooling layer present
-        if (pooling) {
+        if (poolType != 0) {
             poolDeriv(deltas);
         }
         // if no pooling layers
@@ -466,7 +508,7 @@ public:
 
     tensor miniBatchBackPropagate(const tensor& deltas, int batchSize) {
         // if pooling layer present
-        if (pooling) {
+        if (poolType != 0) {
             poolDeriv(deltas);
         }
             // if no pooling layers
@@ -499,28 +541,64 @@ public:
         }
     }
 
-    int getPadWidth() const {
-        return this->padWidth;
+    vector<tensor> getKernels() {
+        return kernels;
+    }
+
+    void setKernels(vector<tensor> kerns) {
+        kernels = kerns;
     }
 
     int getNumKernels() const {
-        return this->numKernels;
+        return numKernels;
+    }
+
+    void setNumKernels(int kCount) {
+        numKernels = kCount;
+    }
+
+    int getPoolType() {
+        return poolType;
+    }
+
+    int getInputDim() const {
+        return inputDim;
     }
 
     int getInputChannels() const {
-        return this->inputChannels;
+        return inputChannels;
+    }
+
+    void setInputChannels(int channelCount) {
+        inputChannels = channelCount;
     }
 
     int getKernelDim() const {
-        return this->kernelSize;
+        return kernelSize;
+    }
+
+    void setKernelDim(int kDim) {
+        kernelSize = kDim;
     }
 
     int getOutputDim() const {
-        return this->outputDim;
+        return outputDim;
+    }
+
+    void setOutputDim(int oDim) {
+        outputDim = oDim;
+    }
+
+    int getPadWidth() const {
+        return padWidth;
+    }
+
+    void setPadWidth(int pWidth) {
+        padWidth = pWidth;
     }
 
     void resetDeltas() {
-        this->kernelGradients = allocTensVec(numKernels, inputChannels, this->kernelSize);
+        kernelGradients = allocTensVec(numKernels, inputChannels, this->kernelSize);
     }
 
 private:
@@ -629,7 +707,7 @@ private:
         }
 
         // if pooling type is max pooling
-        if (this->poolType == "max") {
+        if (this->poolType == 1) {
             // for every channel in pool output
             for (int kernelIndex = 0; kernelIndex < this->numKernels; kernelIndex++) {
                 // for every row in pool output
@@ -657,7 +735,7 @@ private:
                 }
             }
         }
-        else if (this->poolType == "avg") {
+        else if (this->poolType == 2) {
             // for every channel in pool output
             for (int kernelIndex = 0; kernelIndex < this->numKernels; kernelIndex++) {
                 // for every row in pool output
@@ -680,7 +758,7 @@ private:
 
     void poolDeriv(const tensor& deltas) {
         // if pool type is max-pooling
-        if (poolType == "max") {
+        if (poolType == 1) {
             this->poolDeltas = allocTensor(numKernels, this->kernelOutputDim);
             for (int kernelIndex = 0; kernelIndex < this->numKernels; kernelIndex++) {
                 for (int row = 0; row < this->outputDim; row++) {
@@ -692,7 +770,7 @@ private:
             }
         }
             // if pool type is average pooling
-        else if (poolType == "avg") {
+        else if (poolType == 2) {
             this->poolDeltas = allocTensor(numKernels, this->kernelOutputDim, 0.25);
             for (int kernelIndex = 0; kernelIndex < this->numKernels; kernelIndex++) {
                 for (int row = 0; row < this->kernelOutputDim; row++) {
@@ -768,7 +846,6 @@ private:
     vector<tensor> kernelDeltas;
     vector<tensor> kernelGradients;
     vector<tensor> kernelPrevGradients;
-    vector<tensor> kernelPreSumOutputs;
     tensor kernelSumOutputs;
     tensor kernelActivatedOutputs;
     tensor outputs;
@@ -785,8 +862,7 @@ private:
     double m;
     bool padding;
     int padWidth = 0;
-    bool pooling;
-    string poolType;
+    int poolType;
 };
 
 
