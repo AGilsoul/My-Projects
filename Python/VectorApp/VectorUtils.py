@@ -72,6 +72,7 @@ class Vector:
     def to_string3d(u):
         return '{}i + {}j + {}k'.format(u[0], u[1], u[2])
 
+
 # Quaternion method class
 class Quaternion:
     # axis = axis of rotation

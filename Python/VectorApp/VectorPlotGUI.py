@@ -15,19 +15,28 @@ exit_layout = [
 
 vector_input_layout = [
     [sg.Text('V', key='V', size=(2, 1)),
-     sg.InputText(key='V_BOX', size=(5, 1)),
-     sg.Radio('2D', 'VectorDimension', key='2D', enable_events=True, default=True),
-     sg.Checkbox('Show Cross Product', key='CP', visible=False, default=False)],
+     sg.InputText(key='V1', size=(2, 1), default_text='1'),
+     sg.InputText(key='V2', size=(2, 1), default_text='0'),
+     sg.InputText(key='V3', size=(2, 1), visible=False, default_text='0')],
     [sg.Text('U', key='U', size=(2, 1)),
-     sg.InputText(key='U_BOX', size=(5, 1)),
-     sg.Radio('3D', 'VectorDimension', key='3D', enable_events=True, default=False)],
+     sg.InputText(key='U1', size=(2, 1), default_text='0'),
+     sg.InputText(key='U2', size=(2, 1), default_text='1'),
+     sg.InputText(key='U3', size=(2, 1), visible=False, default_text='0')],
     [sg.Button('Update', font=AppFont)]
+]
+
+button_layout = [
+    [sg.Radio('2D', 'VectorDimension', key='2D', enable_events=True, default=True),
+     sg.Checkbox('Show Cross Product', key='CP', visible=False, default=False)],
+    [sg.Radio('3D', 'VectorDimension', key='3D', enable_events=True, default=False)]
 ]
 
 overall_layout = [
     [sg.Canvas(key='figCanvas')],
     [
         sg.Column(vector_input_layout, element_justification='left', expand_x=True),
+        sg.VSeparator(),
+        sg.Column(button_layout, element_justification='left', expand_x=True),
         sg.VSeparator(),
         sg.Column(exit_layout, element_justification='right', expand_x=True)
      ]
@@ -41,9 +50,16 @@ def draw_figure(canvas, figure):
     return figure_canvas_agg
 
 
-def update_figure(window, V):
-    vec_list = [[float(x) for x in i.strip().split(',')] for i in V]
-    if window['CP']:
+def update_figure(window, values):
+    if values['2D']:
+        V = [float(values['V' + str(i + 1)]) for i in range(0, 2)]
+        U = [float(values['U' + str(i + 1)]) for i in range(0, 2)]
+    else:
+        V = [float(values['V' + str(i + 1)]) for i in range(0, 3)]
+        U = [float(values['U' + str(i + 1)]) for i in range(0, 3)]
+
+    vec_list = [V, U]
+    if values['CP']:
         vec_list.append(Vector.cross_product(vec_list[0], vec_list[1]))
 
     return draw_figure(window['figCanvas'].TKCanvas, create_plot(vec_list))
@@ -54,7 +70,8 @@ def main():
                        overall_layout,
                        finalize=True,
                        resizable=True)
-    figure = draw_figure(window['figCanvas'].TKCanvas, create_plot([[1,2], [2,1], [1,1]]))
+    # fix this
+    figure = update_figure(window, window.read(1)[1])
     while True:
         event, values = window.read()
         # print('event:')
@@ -66,12 +83,19 @@ def main():
         if event == 'Update':
             figure.get_tk_widget().forget()
             plt.close('all')
-            update_figure(window, [values['V_BOX'], values['U_BOX']])
+            figure = update_figure(window, values)
         elif event == '2D':
             window['CP'].Update(visible=False)
             window['CP'].Update(False)
+            window['V3'].Update(visible=False)
+            window['U3'].Update(visible=False)
         elif event == '3D':
             window['CP'].Update(visible=True)
+            window['V3'].Update(visible=True)
+            window['U3'].Update(visible=True)
+            window['V3'].Update('')
+            window['U3'].Update('')
+
 
     window.close()
 
