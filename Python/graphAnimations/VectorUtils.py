@@ -94,7 +94,13 @@ class Quaternion:
         d = sin_theta_half * rot_axis[2]
 
         if verbose:
-            print('q1 * p * q2 =\n({}) * ({}) * ({})'.format(Quaternion.to_string([a, b, c, d]), Vector.to_string3d(p), Quaternion.to_string([a, -b, -c, -d])))
+            print(
+                'q1 * p * q2 =\n({}) * ({}) * ({})\n'.format(
+                    Quaternion.to_string([a, b, c, d]),
+                    Vector.to_string3d(p),
+                    Quaternion.to_string([a, -b, -c, -d])
+                )
+            )
 
         return Quaternion.rotate(p, [a, b, c, d], unit=True)
 
@@ -109,17 +115,23 @@ class Quaternion:
         d = sin_theta_half * rot_axis[2]
 
         if verbose:
-            print('({}) * ({}) * ({}) = \n'.format(Quaternion.to_string([a, b, c, d]), Vector.to_string3d(p), Quaternion.to_string([a, -b, -c, -d])))
+            print(
+                '({}) * ({}) * ({}) = \n'.format(
+                    Quaternion.to_string([a, b, c, d]),
+                    Vector.to_string3d(p),
+                    Quaternion.to_string([a, -b, -c, -d])
+                )
+            )
 
         return Quaternion.rotate(p, [a, b, c, d], unit=True)
 
     # rotates point p with given quaternion q
     @staticmethod
     def rotate(p, q, unit=False):
-        quaternion = np.array(q)
+        quaternion = np.array(q, dtype=float)
         if not unit:
             mag = Vector.vec_magnitude(q)
-            quaternion *= (1/mag)
+            quaternion *= (1.0/mag)
 
         a = quaternion[0]
         b = quaternion[1]
@@ -198,4 +210,3 @@ class Quaternion:
     @staticmethod
     def to_string(q):
         return '{} + {}i + {}j + {}k'.format(q[0], q[1], q[2], q[3])
-

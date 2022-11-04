@@ -1,4 +1,4 @@
-from Vector import *
+from VectorUtils import *
 
 
 def in_menu():

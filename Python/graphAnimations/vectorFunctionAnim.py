@@ -2,13 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 import numpy as np
 import math
-from Vector import *
-from quaternions import *
-
-
-i_hat = np.array([1, 0, 0])
-j_hat = np.array([0, 1, 0])
-k_hat = np.array([0, 0, 1])
+from VectorUtils import *
 
 
 def r_helix(theta, m):
@@ -96,7 +90,7 @@ p_o = np.array([3, 5, 2])
 def vector_rotate(cur_theta):
     global axis_quiver
     axis_quiver.remove()
-    rotated = Quaternion.rotate(p_o, j_hat, cur_theta)
+    rotated = Quaternion.rotate_deg(p_o, j_hat, cur_theta)
     vector_matrix = rotated.T
     o_x = [0]
     o_y = [0]

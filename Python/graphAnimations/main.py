@@ -22,6 +22,6 @@ def animate(i):
 
 
 anim = FuncAnimation(fig, animate, init_func=init, frames=200, interval=20, blit=True)
-anim.save('sine_wave.gif', writer='imagemagick')
+# anim.save('sine_wave.gif', writer='imagemagick')
 
 plt.show()
