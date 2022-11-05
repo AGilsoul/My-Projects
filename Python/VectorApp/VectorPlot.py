@@ -50,8 +50,15 @@ def create_plot_3d(V, origins):
     return fig
 
 
-def create_plot(V, origins=[]):
-    if len(origins) == 0:
+def create_plot(V, origins_dict={}):
+    origins = []
+    if len(origins_dict) != 0:
+        for i in range(len(V)):
+            if i in origins_dict:
+                origins.append(origins_dict.get(i))
+            else:
+                origins.append([0 for _ in V[0]])
+    else:
         origins = [[0 for _ in V[0]] for _ in V]
     if len(V[0]) == 2:
         return create_plot_2d(V, origins)

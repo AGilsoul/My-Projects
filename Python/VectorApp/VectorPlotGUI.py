@@ -27,16 +27,17 @@ vector_input_layout = [
 
 button_layout = [
     [sg.Radio('2D', 'VectorDimension', key='2D', enable_events=True, default=True),
-     sg.Checkbox('Show Cross Product', key='CP', visible=False, default=False)],
-    [sg.Radio('3D', 'VectorDimension', key='3D', enable_events=True, default=False)]
+     sg.Checkbox('Show Projection V onto U', key='PROJ', default=False)],
+    [sg.Radio('3D', 'VectorDimension', key='3D', enable_events=True, default=False),
+     sg.Checkbox('Show Cross Product', key='CP', visible=False, default=False)]
 ]
 
 overall_layout = [
     [sg.Canvas(key='figCanvas')],
     [
-        sg.Column(vector_input_layout, element_justification='left', expand_x=True),
+        sg.Column(vector_input_layout, element_justification='left', expand_x=True, size=(50,100)),
         sg.VSeparator(),
-        sg.Column(button_layout, element_justification='left', expand_x=True),
+        sg.Column(button_layout, element_justification='left', expand_x=True, size=(100,50)),
         sg.VSeparator(),
         sg.Column(exit_layout, element_justification='right', expand_x=True)
      ]
@@ -51,6 +52,7 @@ def draw_figure(canvas, figure):
 
 
 def update_figure(window, values):
+    origins_dict = {}
     if values['2D']:
         V = [float(values['V' + str(i + 1)]) for i in range(0, 2)]
         U = [float(values['U' + str(i + 1)]) for i in range(0, 2)]
@@ -58,11 +60,15 @@ def update_figure(window, values):
         V = [float(values['V' + str(i + 1)]) for i in range(0, 3)]
         U = [float(values['U' + str(i + 1)]) for i in range(0, 3)]
 
-    vec_list = [V, U]
+    vec_list = np.array([V, U])
     if values['CP']:
-        vec_list.append(Vector.cross_product(vec_list[0], vec_list[1]))
-
-    return draw_figure(window['figCanvas'].TKCanvas, create_plot(vec_list))
+        cross_prod = Vector.cross_product(vec_list[0], vec_list[1])
+        vec_list = np.concatenate([vec_list, [cross_prod]])
+    if values['PROJ']:
+        proj = Vector.vector_projection(vec_list[1], vec_list[0])
+        vec_list = np.concatenate([vec_list, [proj[0], proj[1]]])
+        origins_dict[len(vec_list) - 1] = proj[0]
+    return draw_figure(window['figCanvas'].TKCanvas, create_plot(vec_list, origins_dict))
 
 
 def main():

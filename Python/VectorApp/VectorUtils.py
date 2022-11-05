@@ -33,10 +33,10 @@ class Vector:
     # return array of vector and orthogonal projection of v onto u
     @staticmethod
     def vector_projection(u, v):
-        c = Vector.dot_product(u, v) / Vector.vec_magnitude(u) ** 2
+        c = Vector.dot_product(u, v) / (Vector.vec_magnitude(u) ** 2)
         w = c * u
         e = v - w
-        return np.array([w, e])
+        return w, e
 
     # return angle between two vectors in radians
     @staticmethod
