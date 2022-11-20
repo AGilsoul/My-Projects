@@ -30,6 +30,8 @@ public:
 
     vector<double> toDouble(vector<string> col);
 
+    vector<string>& operator[](const int index);
+
     vector<string>& operator[](const string& header);
 
     friend ostream& operator<<(ostream& out, const csvReader& reader);

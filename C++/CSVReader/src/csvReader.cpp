@@ -23,6 +23,11 @@ vector<double> csvReader::toDouble(vector<string> col) {
     for (int i = 0; i < col.size(); i++) {
         doubleData[i] = stod(col[i]);
     }
+    return doubleData;
+}
+
+vector<string>& csvReader::operator[](const int index) {
+    return data[index];
 }
 
 vector<string>& csvReader::operator[](const string& header) {
