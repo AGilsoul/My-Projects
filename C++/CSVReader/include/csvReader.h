@@ -30,6 +30,12 @@ public:
 
     vector<double> toDouble(vector<string> col);
 
+    vector<string> getHeaders();
+
+    int getNumHeaders();
+
+    int getNumRows();
+
     vector<string>& operator[](const int index);
 
     vector<string>& operator[](const string& header);

@@ -26,6 +26,18 @@ vector<double> csvReader::toDouble(vector<string> col) {
     return doubleData;
 }
 
+vector<string> csvReader::getHeaders() {
+    return columnHeaders;
+}
+
+int csvReader::getNumHeaders() {
+    return numColumns;
+}
+
+int csvReader::getNumRows() {
+    return data.size();
+}
+
 vector<string>& csvReader::operator[](const int index) {
     return data[index];
 }
