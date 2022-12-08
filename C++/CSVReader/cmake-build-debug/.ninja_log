@@ -1,7 +1,0 @@
-# ninja log v5
-364	644	6906916931621200	CSVReader.exe	24ad0576826ade8c
-0	478	6906923408328147	CMakeFiles/CSVReader.dir/src/csvReader.cpp.obj	ff99e2aef9dbd93e
-1	98	6906923423951668	build.ninja	a71bd550f5f9811
-0	308	6906921500743181	CMakeFiles/CSVReader.dir/src/main.cpp.obj	36fd98cab41e71dc
-480	522	6906923408748230	CSVReader.lib	95c6598542fc5a3a
-0	485	6906917198567414	CMakeFiles/CSVReaderLib.dir/src/csvReader.cpp.obj	71d8fde9a257bf54
