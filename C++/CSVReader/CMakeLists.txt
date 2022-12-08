@@ -3,4 +3,5 @@ project(CSVReader)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(CSVReader src/main.cpp src/csvReader.cpp include/csvReader.h include/hashtable.h)
+add_library(CSVReader STATIC src/csvReader.cpp)
+include_directories(include)
