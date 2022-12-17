@@ -1,0 +1,2 @@
+GPUNeuralNetwork Description:
+* This program is similar to my Artificial Neural Network, except it utilizes CUDA for many of the computations. It can only contain one hidden layer, but it is quite a bit faster than the other, and one layer seems to be sufficient for many cases. I am currently working on an improvement of this where instead of constantly copying data from the GPU to the CPU, I keep all of the data on the GPU until absolutely necessary, decreasing runtime. This version will also have a variable number of hidden layers.

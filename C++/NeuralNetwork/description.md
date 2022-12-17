@@ -1,0 +1,2 @@
+NeuralNetwork Description:
+* This was part of my high school senior capstone project. It is an Artificial Neural Network written almost entirely from scratch, and is one of my favorite projects. It was the next step up after my LinearRegression program, and though it took a while to get all of the math right, it seems to work pretty well, getting >95% accuracy when identifying malignancy in breast tumors.

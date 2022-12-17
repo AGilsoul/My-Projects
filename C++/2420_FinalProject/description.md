@@ -1,0 +1,2 @@
+2420_FinalProject: 
+* In this project, I coded a binary tree object, and then created a method for balancing the tree to optimize average query time for each node. The user first specifies the number of nodes they want in the tree. The program then creates a tree with all numbers up to that number, inserting them in a random order. The program then balances the tree, and displays a percentage difference in the average node distance between the balanced and unbalanced trees.
