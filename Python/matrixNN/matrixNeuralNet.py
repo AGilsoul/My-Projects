@@ -399,7 +399,7 @@ def energy_config():
     # input layer for 8 inputs, two hidden layers with 15 neurons and output layer with 1 neuron
     net = NeuralNet(0.001, [8, 15, 15, 1], early_stopping=15, name="COOLING LOAD", graph=True)
     # loads house data
-    house_data = pd.read_csv("resources/energyefficiency.csv")
+    house_data = pd.read_csv("energyefficiency.csv")
     # creates target array
     data_targets = np.array(house_data['cooling load'])
     # normalizes input data
