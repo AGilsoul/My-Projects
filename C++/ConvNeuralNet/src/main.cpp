@@ -1,7 +1,6 @@
 #include <iostream>
 #include <ostream>
 #include <sstream>
-#include <fstream>
 #include <iterator>
 #include "../include/ConvNet.h"
 
@@ -9,55 +8,69 @@ using std::cin;
 using std::ifstream;
 using std::ios;
 
+/***
+ * Reads data from the mnist_train.csv file. Made specifically for reading from this file
+ * @param testData a vector of tensors for each data point (digit)
+ * @param expected a vector to hold integer labels for each data point (0-9)
+ * @param numChannels the number of channels in the input
+ * @param numDuplicationChannels the number of channels to be created for the output
+ */
 void readMnistFile(vector<tensor>& testData, vector<int>& expected, int numChannels=1, int numDuplicationChannels=1);
 
 int main() {
+
+    // variables for reading data
     string placeHolder;
     int actualDataChannels = 1;
-    int numDupChannels = 3;
-    ConvNet cnn(numDupChannels, 28, 0.001, 0.0);
-    cnn.addKernel(9, 3, true, true);
-    cnn.addKernel(18, 3, true, true);
-    cnn.addDenseLayer(120, true);
-    cnn.addDenseLayer(84, true);
+    int numDupChannels = 1;
+
+    // uncomment this to retrain a new network
+    /*
+    ConvNet cnn(numDupChannels, 28, 0.001, 0.9);
+    cnn.addConvLayer(9, 3, true, true, "max");
+    cnn.addConvLayer(18, 3, true, true, "max");
+    cnn.addDenseLayer(128,true);
     cnn.addDenseLayer(10, false);
+    */
+
+    // uncomment to load a previously trained neural network
+    ///*
+    cout << "Loading Network..." << endl;
+    ConvNet cnn("../res/CNNModel.csv");
     cnn.printNet();
     cout << endl;
+    //*/
 
+    // read data from the MNIST training file, then randomize
     vector<tensor> data;
     vector<int> labels;
     cout << "Reading File..." << endl;
     readMnistFile(data, labels, actualDataChannels, numDupChannels);
 
     cout << "Randomizing Data..." << endl;
-    vector<int> indexes(data.size());
-    for (int i = 0; i < data.size(); ++i)
-        indexes[i] = i;
+    cnn.shuffleData(data, labels);
 
-    std::random_shuffle(indexes.begin(), indexes.end());
-    vector<tensor> newData(data.size());
-    vector<int> newExpect(data.size());
-    for (unsigned int i = 0; i < data.size(); i++) {
-        newData[i] = data[indexes[i]];
-        newExpect[i] = labels[indexes[i]];
-    }
-    data = newData;
-    labels = newExpect;
-
+    // normalize data to a 0-1 scale, then split into training and test sets
     cout << "Normalizing..." << endl;
     normalize(data, {{0,255}});
     vector<tensor> trainData(data.begin(), data.begin() + 40000);
     vector<int> trainLabels(labels.begin(), labels.begin() + 40000);
     vector<tensor> testData(data.begin() + 40000, data.end());
     vector<int> testLabels(labels.begin() + 40000, labels.end());
+    // uncomment to train the new model
+    /*
     cout << "Fitting Model..." << endl;
     cnn.fitModel(trainData, trainLabels, 5, 1, true);
+    */
+
+    // evaluates the accuracy of the model
     cout << endl << "Testing Model..." << endl;
     auto res = cnn.eval(testData, testLabels) * 100;
     cout << endl << "Test Accuracy: " << setprecision(4) << res << "%" << endl;
-    cout << endl << "Saving..." << endl;
 
+    // uncomment to save the new model
     /*
+    cout << endl << "Saving..." << endl;
     bool saved = cnn.save("CNNModel.csv");
     if (saved) {
         cout << "Save Successful" << endl;
@@ -65,14 +78,14 @@ int main() {
     else {
         cout << "Error While Saving" << endl;
     }
-    */
+     */
 
     cout << "Press x to continue" << endl;
     cin >> placeHolder;
     return 0;
 }
 
-
+// function to read data from MNIST csv file
 void readMnistFile(vector<tensor>& testData, vector<int>& expected, int numChannels, int numDuplicationChannels) {
     //784 data columns, one label column at beginning
     //strings to be used for reference and assignment of values when reading the file and assigning to the string list sList
