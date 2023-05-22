@@ -60,7 +60,7 @@ def heat_map(fig, ax):
                 points.append([xi, yi, zi, res])
 
     points = np.array(points).T
-    points = ax.scatter(points[0], points[1], points[2],
+    points_plotted = ax.scatter(points[0], points[1], points[2],
                         c=points[3], cmap='plasma', alpha=0.01)
 
 
