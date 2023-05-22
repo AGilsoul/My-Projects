@@ -62,14 +62,14 @@ def heat_map(fig, ax):
     points = np.array(points).T
     points = ax.scatter(points[0], points[1], points[2],
                         c=points[3], cmap='plasma', alpha=0.01)
-    ax.set_xlabel('x-axis')
-    ax.set_ylabel('y-axis')
-    ax.set_zlabel('z-axis')
 
 
 def main():
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
+    ax.set_xlabel('x-axis')
+    ax.set_ylabel('y-axis')
+    ax.set_zlabel('z-axis')
     # heat_map(fig, ax)
     solve_ode(fig, ax)
     plt.show()
