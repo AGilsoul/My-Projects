@@ -1,6 +1,98 @@
 import random
 
 
+class Function:
+    def __init__(self):
+        return
+
+    def __call__(self, x):
+        return x
+
+
+class Polynomial(Function):
+    def __init__(self, coefs):
+        self.coefs = coefs
+
+    def __call__(self, x):
+        return sum([self.coefs[i] * x ** i for i in range(len(self.coefs))])
+
+    def shorten(self):
+        for i in reversed(range(len(self.coefs))):
+            if self.coefs[i] == 0:
+                self.coefs = self.coefs.pop()
+                break
+
+    def __add__(self, p):
+        if type(self) == type(p):
+            new_coefs = [0 for _ in range(max(len(p.coefs), len(self.coefs)))]
+            for i in range(len(self.coefs)): new_coefs[i] += self.coefs[i]
+            for i in range(len(p.coefs)): new_coefs[i] += p.coefs[i]
+        else:
+            new_coefs = self.coefs
+            new_coefs[0] += p
+        return Polynomial(new_coefs)
+
+    def __iadd__(self, p):
+        if type(self) == type(p):
+            new_coefs = [0 for _ in range(max(len(p.coefs), len(self.coefs)))]
+            for i in range(len(self.coefs)): new_coefs[i] += self.coefs[i]
+            for i in range(len(p.coefs)): new_coefs[i] += p.coefs[i]
+            self.coefs = new_coefs
+        else:
+            self.coefs[0] += p
+        return self
+
+    def __mul__(self, p):
+        if type(self) == type(p):
+            new_coefs = [0 for _ in range((len(self.coefs)) + (len(p.coefs)) - 1)]
+            for i in range(len(self.coefs)):
+                for j in range(len(p.coefs)):
+                    cur_power = i + j
+                    new_coefs[cur_power] += self.coefs[i] * p.coefs[j]
+        else:
+            new_coefs = self.coefs
+            for i in range(len(self.coefs)):
+                new_coefs[i] *= p
+        return Polynomial(new_coefs)
+
+    def __imul__(self, p):
+        if type(self) == type(p):
+            new_coefs = [0 for _ in range((len(self.coefs)) + (len(p.coefs)) - 1)]
+            for i in range(len(self.coefs)):
+                for j in range(len(p.coefs)):
+                    cur_power = i + j
+                    new_coefs[cur_power] += self.coefs[i] * p.coefs[j]
+            self.coefs = new_coefs
+        else:
+            for i in range(len(self.coefs)):
+                self.coefs[i] *= p
+        return self
+
+    def __sub__(self, p):
+        return self + -1 * p
+
+    def __isub__(self, p):
+        self.coefs = (self - p).coefs
+        return self
+
+    def __str__(self):
+        first_non_zero = 0
+        for i in range(len(self.coefs)):
+            if self.coefs[i] != 0:
+                first_non_zero = i
+                break
+        output = f'{self.coefs[first_non_zero]}'
+        if first_non_zero != 0:
+            output += f'x^{first_non_zero}'
+        for i in range(first_non_zero + 1, len(self.coefs)):
+            abs_val = abs(self.coefs[i])
+            if self.coefs[i] < 0:
+                output += f' - {abs_val}x^{i}'
+            elif self.coefs[i] > 0:
+                output += f' + {abs_val}x^{i}'
+        return output
+
+
 class Methods:
     @staticmethod
     def approx_deriv(func, x, dx=0.001):
@@ -38,37 +130,17 @@ class Methods:
                     break
         return sorted(zeros)
 
-    @staticmethod
-    # coefficients in order of powers from least to greatest
-    def calc_poly(coefs, x):
-        return sum([coefs[i]*x**i for i in range(len(coefs))])
 
-    @staticmethod
-    def mult_poly(coefs_1, coefs_2):
-        new_coefs = [0 for _ in range((len(coefs_1))+(len(coefs_2)) - 1)]
-        for i in range(len(coefs_1)):
-            for j in range(len(coefs_2)):
-                cur_power = i + j
-                new_coefs[cur_power] += coefs_1[i] * coefs_2[j]
-        return new_coefs
-
-
-def function(x):
-    return Methods.calc_poly([0, 2, 5, 3], x)
-
-
+poly = Polynomial([0, 2, 5, 3])
 val = -7
-print(f'polynomial 3x^3 + 5x^2 + 2x - 7 at x={val}: {Methods.calc_poly([-7, 2, 5, 3], val)}')
-print(f'approximate zeros of polynomial 3x^3 + 5x^2 + 2x - 7: x={Methods.newton_approx(function, num_zeros=3, x_range=(-1, 0))}')\
+print(f'polynomial {poly} at x={val}: {poly(val)}')
+print(f'approximate zeros of polynomial {poly}: x={Methods.newton_approx(poly, num_zeros=3, x_range=(-1, 0))}')\
 
-test_poly = Methods.mult_poly([-7, 2, 5, 3], [1, -2, 3, -13, 2, 4])
-
-
-def new_func(x):
-    return Methods.calc_poly(test_poly, x)
+p1 = Polynomial([1, -2, 3, -13, 2, 4])
+p2 = poly * p1
 
 
-print(f'multiplying polynomial 3x^3 + 5x^2 + 2x - 7 by 4x^5 + 2x^4 + 13x^3 + 3x^2 - 2x + 1: {test_poly}')
-print(f'approximate zeros of polynomial 12x^8 + 26x^7 + 57x^6 + 50x^5 + 21x^4 - 92x^3 - 20x^2 + 16x - 7: {Methods.newton_approx(new_func, num_zeros=8, x_range=(-10, 10))}')
+print(f'multiplying polynomial {poly} by {p1}: {p2}')
+print(f'approximate zeros of polynomial {p2}: {Methods.newton_approx(p2, num_zeros=8, x_range=(-10, 10))}')
 
 
