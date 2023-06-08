@@ -39,15 +39,6 @@ class Methods:
         return sorted(zeros)
 
     @staticmethod
-    def __newton_approx_recurse__(func, cur_x, num_iterations, iter_count):
-        if iter_count < num_iterations:
-            deriv = Methods.approx_deriv(func, cur_x)
-            x1 = Methods.linear_zero(deriv, (cur_x, func(cur_x)))
-            return Methods.__newton_approx_recurse__(func, x1, num_iterations, iter_count + 1)
-        else:
-            return cur_x
-
-    @staticmethod
     # coefficients in order of powers from least to greatest
     def calc_poly(coefs, x):
         return sum([coefs[i]*x**i for i in range(len(coefs))])
