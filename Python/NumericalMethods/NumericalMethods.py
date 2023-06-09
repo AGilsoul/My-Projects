@@ -1,8 +1,10 @@
 import random
+import matplotlib.pyplot as plt
 
 
 class Function:
-    def __init__(self):
+    def __init__(self, var):
+        self.var = var
         return
 
     def __call__(self, x):
@@ -10,7 +12,8 @@ class Function:
 
 
 class Polynomial(Function):
-    def __init__(self, coefs):
+    def __init__(self, coefs, var='x'):
+        super().__init__(var)
         self.coefs = coefs
 
     def __call__(self, x):
@@ -83,13 +86,13 @@ class Polynomial(Function):
                 break
         output = f'{self.coefs[first_non_zero]}'
         if first_non_zero != 0:
-            output += f'x^{first_non_zero}'
+            output += f'{self.var}^{first_non_zero}'
         for i in range(first_non_zero + 1, len(self.coefs)):
             abs_val = abs(self.coefs[i])
             if self.coefs[i] < 0:
-                output += f' - {abs_val}x^{i}'
+                output += f' - {abs_val}{self.var}^{i}'
             elif self.coefs[i] > 0:
-                output += f' + {abs_val}x^{i}'
+                output += f' + {abs_val}{self.var}^{i}'
         return output
 
 
@@ -98,9 +101,7 @@ class Methods:
     def approx_deriv(func, x, dx=0.001):
         x1 = x - dx/2
         x2 = x + dx/2
-        y1 = func(x1)
-        y2 = func(x2)
-        dy = y2 - y1
+        dy = func(x2) - func(x1)
         return dy / dx
 
     @staticmethod
@@ -113,10 +114,12 @@ class Methods:
     @staticmethod
     def newton_approx(func, num_zeros=1, x_range=(-1, 1), num_iterations=100, max_attempts=100):
         zeros = []
+        range_min = min(x_range)
+        range_max = max(x_range)
         for zero in range(num_zeros):
             num_attempts = 0
             while True:
-                x = random.uniform(min(x_range), max(x_range))
+                x = random.uniform(range_min, range_max)
                 for i in range(num_iterations):
                     deriv = Methods.approx_deriv(func, x)
                     x = round(Methods.linear_zero(deriv, (x, func(x))), 5)
@@ -134,13 +137,13 @@ class Methods:
 poly = Polynomial([0, 2, 5, 3])
 val = -7
 print(f'polynomial {poly} at x={val}: {poly(val)}')
-print(f'approximate zeros of polynomial {poly}: x={Methods.newton_approx(poly, num_zeros=3, x_range=(-1, 0))}')\
+print(f'approximate zeros of polynomial {poly}: x={Methods.newton_approx(poly, num_zeros=3, x_range=(-1, 1))}')\
 
 p1 = Polynomial([1, -2, 3, -13, 2, 4])
 p2 = poly * p1
 
 
 print(f'multiplying polynomial {poly} by {p1}: {p2}')
-print(f'approximate zeros of polynomial {p2}: {Methods.newton_approx(p2, num_zeros=8, x_range=(-10, 10))}')
-
+zeros = Methods.newton_approx(p2, num_zeros=8, x_range=(-10, 10))
+print(f'approximate zeros of polynomial {p2}: {zeros}')
 
