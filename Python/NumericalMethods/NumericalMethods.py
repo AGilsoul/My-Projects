@@ -2,6 +2,63 @@ import random
 import matplotlib.pyplot as plt
 
 
+class ComplexNumber:
+    def __init__(self, Re, Im=0.0):
+        self.Re = Re
+        self.Im = Im
+
+    def modulus(self):
+        return (self.Re**2 + self.Im**2)**(1/2)
+
+    def __add__(self, other):
+        new_number = ComplexNumber(self.Re, self.Im)
+        if type(new_number) == type(other):
+            new_number.Re += other.Re
+            new_number.Im += other.Im
+        else:
+            new_number.Re += other
+        return new_number
+
+    def __iadd__(self, other):
+        res = self + other
+        self.Re = res.Re
+        self.Im = res.Im
+        return self
+
+    def __mul__(self, other):
+        new_number = ComplexNumber(self.Re, self.Im)
+        if type(new_number) == type(other):
+            new_number.Re = (new_number.Re * other.Re) - (new_number.Im * other.Im)
+            new_number.Im = (new_number.Re * other.Im) + (new_number.Im * other.Re)
+        else:
+            new_number.Re *= other
+            new_number.Im *= other
+        return new_number
+
+    def __imul__(self, other):
+        res = self * other
+        self.Re = res.Re
+        self.Im = res.Im
+        return self
+
+    def __sub__(self, other):
+        res = (self * -1) + other
+        return res
+
+    def __isub__(self, other):
+        res = self - other
+        self.Re = res.Re
+        self.Im = res.Im
+        return res
+
+    def __str__(self):
+        if self.Im < 0:
+            return f'{self.Re} - {abs(self.Im)}i'
+        return f'{self.Re} + {self.Im}i'
+
+
+
+
 class Function:
     def __init__(self, var):
         self.var = var
@@ -9,6 +66,19 @@ class Function:
 
     def __call__(self, x):
         return x
+
+
+class FactoredPolynomial(Function):
+    def __init__(self, roots, var):
+        super().__init__(var)
+        self.roots = roots
+
+    def __call__(self, x):
+        val = 1
+        for root in self.roots:
+            val *= (x - root)
+        return val
+
 
 
 class Polynomial(Function):
@@ -33,6 +103,7 @@ class Polynomial(Function):
         else:
             new_coefs = self.coefs
             new_coefs[0] += p
+        self.shorten()
         return Polynomial(new_coefs)
 
     def __iadd__(self, p):
@@ -43,6 +114,7 @@ class Polynomial(Function):
             self.coefs = new_coefs
         else:
             self.coefs[0] += p
+        self.shorten()
         return self
 
     def __mul__(self, p):
@@ -56,6 +128,7 @@ class Polynomial(Function):
             new_coefs = self.coefs
             for i in range(len(self.coefs)):
                 new_coefs[i] *= p
+        self.shorten()
         return Polynomial(new_coefs)
 
     def __imul__(self, p):
@@ -69,6 +142,7 @@ class Polynomial(Function):
         else:
             for i in range(len(self.coefs)):
                 self.coefs[i] *= p
+        self.shorten()
         return self
 
     def __sub__(self, p):
@@ -76,6 +150,7 @@ class Polynomial(Function):
 
     def __isub__(self, p):
         self.coefs = (self - p).coefs
+        self.shorten()
         return self
 
     def __str__(self):
