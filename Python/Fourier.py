@@ -95,12 +95,12 @@ def dirac_delta(x: float, a=1e-2) -> float:
 
 
 # discrete fourier transform for a range of frequencies
-def transform_signal(signal: DiscreteSignal, max_freq: int) -> list:
+def transform_signal(signal: DiscreteSignal, max_freq: int, num_terms=-1) -> list:
     sampling_freq = 1 / signal.dt  # sampling frequency of discrete signal
-
+    # print(f'sampling frequency: {sampling_freq}')
     # if max frequency to compute is above Nyquist limit, set frequency range to go up to Nyquist limit
     if 2 * max_freq >= sampling_freq:
-        frequencies = range(0, int(sampling_freq/2)+1)
+        frequencies = range(0, int(sampling_freq)+1)
     else:
         frequencies = range(0, int(max_freq) + 1)
     # list of 0 valued complex numbers for each frequency
@@ -121,9 +121,11 @@ def transform_signal(signal: DiscreteSignal, max_freq: int) -> list:
     # Need to average over all samples, so divide by number of samples
     transformed = [t * 2 / len(signal.samples) for t in transformed]
     # Construct Signal objects for each frequency
-    print(max(transformed, key=lambda t: t.modulus))
+    print(len(transformed))
     signals = [Signal(transformed[t].modulus, frequencies[t], transformed[t].phase) for t in range(len(transformed))]
-
+    if num_terms > 0:
+        signals = sorted(signals, key=lambda s: s.amplitude, reverse=True)
+        signals = signals[:num_terms]
     return signals
 
 
@@ -137,7 +139,7 @@ def rand_signal(num_signals: int, amplitude_range: Union[tuple, list, np.array],
         cur_amp = random.uniform(amplitude_range[0], amplitude_range[1])
         cur_freq = random.randint(frequency_range[0], frequency_range[1])
         if shift:
-            cur_phase = random.uniform(0, np.pi / 2)
+            cur_phase = random.uniform(0, 3 * np.pi / 2)
             # cur_phase = 3/4
         else:
             cur_phase = 0
@@ -181,20 +183,19 @@ def symmetric_dft() -> None:
     signal = rand_signal(20, [0, 5], [1, 10], t_scale[-1], 10000, shift=False)  # generates random signal composed of 20 cosine waves
     component_signals = transform_signal(signal, 10)  # performs discrete fourier transform on random signal
 
-    max_comp = max(component_signals, key=lambda p: p.amplitude)  # for printing out frequency of wave which contributes the most
+    max_comp = max(component_signals, key=lambda p: p.amplitude)  # for printing out wave which contributes the most
     print(f'max signal: {max_comp}')
-    plot_dft(signal, component_signals, t_scale)  # plots results
+    plot_dft(signal, component_signals, t_scale)  # plot results
 
 
 # same as above, but cosine waves can have phase shifts
 def asymmetric_dft() -> None:
     t_scale = [0, 1]
-    signal = rand_signal(10, [1, 5], [1, 10], t_scale[-1], 10000)
+    signal = rand_signal(100, [1, 5], [1, 10], t_scale[-1], 10000)  # generates random signal composed of 100 shifted cosine waves
     component_signals = transform_signal(signal, 10)
-    max_comp = max(component_signals, key=lambda p: p.amplitude)
-    print(max_comp)
-    print()
-    plot_dft(signal, component_signals, t_scale)
+    max_comp = max(component_signals, key=lambda p: p.amplitude)  # for printing out wave which contributes the most
+    print(f'max signal: {max_comp}')
+    plot_dft(signal, component_signals, t_scale)  # plot results
 
 
 def main() -> int:
