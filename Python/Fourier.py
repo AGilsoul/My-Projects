@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import random
 from typing import Union
@@ -69,11 +71,11 @@ class Signal:
     def __init__(self, amplitude: float, frequency: float, phase: float):
         self.amplitude = amplitude
         self.frequency = frequency
-        self.phase = phase
+        self.phase = phase / (2 * np.pi)
 
     # evaluates signal at some time t
     def eval(self, t: float) -> float:
-        return self.amplitude * np.cos(2 * np.pi * self.frequency * (t - self.phase))
+        return self.amplitude * np.cos(2 * np.pi * (self.frequency * t + self.phase))
 
     # plots the signal on a given axis
     def plot(self, axis, t_eval: Union[list, np.array], label_p='', c_p='') -> None:
@@ -119,6 +121,7 @@ def transform_signal(signal: DiscreteSignal, max_freq: int) -> list:
     # Need to average over all samples, so divide by number of samples
     transformed = [t * 2 / len(signal.samples) for t in transformed]
     # Construct Signal objects for each frequency
+    print(max(transformed, key=lambda t: t.modulus))
     signals = [Signal(transformed[t].modulus, frequencies[t], transformed[t].phase) for t in range(len(transformed))]
 
     return signals
@@ -135,10 +138,11 @@ def rand_signal(num_signals: int, amplitude_range: Union[tuple, list, np.array],
         cur_freq = random.randint(frequency_range[0], frequency_range[1])
         if shift:
             cur_phase = random.uniform(0, np.pi / 2)
+            # cur_phase = 3/4
         else:
             cur_phase = 0
-        # print(f'Current signal: amp: {cur_amp}, freq: {cur_freq}, phase: {cur_phase}')
-        cur_signal = cur_amp * np.cos(2 * np.pi * (t - cur_phase) * cur_freq)
+        print(f'Original signal: amp: {cur_amp}, freq: {cur_freq}, phase: {cur_phase}')
+        cur_signal = cur_amp * np.cos(2 * np.pi * (t * cur_freq + cur_phase))
         new_signal += cur_signal
 
     new_signal = DiscreteSignal(t, new_signal, t[1] - t[0])
@@ -178,23 +182,24 @@ def symmetric_dft() -> None:
     component_signals = transform_signal(signal, 10)  # performs discrete fourier transform on random signal
 
     max_comp = max(component_signals, key=lambda p: p.amplitude)  # for printing out frequency of wave which contributes the most
-    print(max_comp)
+    print(f'max signal: {max_comp}')
     plot_dft(signal, component_signals, t_scale)  # plots results
 
 
 # same as above, but cosine waves can have phase shifts
 def asymmetric_dft() -> None:
     t_scale = [0, 1]
-    signal = rand_signal(1, [0, 5], [1, 10], t_scale[-1], 10000)
-    component_signals = transform_signal(signal, 20)
-
+    signal = rand_signal(10, [1, 5], [1, 10], t_scale[-1], 10000)
+    component_signals = transform_signal(signal, 10)
     max_comp = max(component_signals, key=lambda p: p.amplitude)
     print(max_comp)
+    print()
     plot_dft(signal, component_signals, t_scale)
 
 
 def main() -> int:
-    symmetric_dft()  # perform discrete fourier transform on a sum of random cosine waves
+    # symmetric_dft()  # perform discrete fourier transform on a sum of random cosine waves
+    asymmetric_dft()  # perform discrete fourier transform on a sum of random shifted cosine waves
     return 0
 
 
