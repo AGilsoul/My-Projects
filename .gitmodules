@@ -1,0 +1,3 @@
+[submodule "DiscreteFourierTransform"]
+	path = DiscreteFourierTransform
+	url = https://github.com/AGilsoul/DiscreteFourierTransform
