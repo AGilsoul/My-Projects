@@ -192,7 +192,7 @@ def symmetric_dft() -> None:
 def asymmetric_dft() -> None:
     t_scale = [0, 1]
     signal = rand_signal(100, [1, 5], [1, 10], t_scale[-1], 10000)  # generates random signal composed of 100 shifted cosine waves
-    component_signals = transform_signal(signal, 10)
+    component_signals = transform_signal(signal, 10)[:10]
     max_comp = max(component_signals, key=lambda p: p.amplitude)  # for printing out wave which contributes the most
     print(f'max signal: {max_comp}')
     plot_dft(signal, component_signals, t_scale)  # plot results
