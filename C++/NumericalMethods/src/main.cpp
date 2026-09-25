@@ -1,4 +1,4 @@
-#include "Tensor.h"
+#include "../include/Tensor.h"
 #include <vector>
 
 using std::vector;
@@ -6,7 +6,8 @@ using NumericalMethods::Tensor;
 
 int main() {
 
-    Tensor<double, 0> myTensor({2, 3});
+    vector<int> vec = {2, 3};
+    Tensor<double, 2> myTensor(vec);
 
     return 0;
 }

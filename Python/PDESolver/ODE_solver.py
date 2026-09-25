@@ -85,12 +85,12 @@ def solve_ode_rk45(ode: DiffEq, x_0, t_0, h, h_tol, args, phase=False, iters=100
 def equilibrium_points():
     return
 
-# solve_ode_rk45(ode=lotka_volterra, 
-#                x_0=np.array([10, 10]), 
-#                t_0=0, 
-#                h=0.1, 
-#                h_tol=1.0e-8, 
-#                args=[1.1, 0.4, 0.1, 0.4], 
-#                phase=True,
-#                iters=10000)
+solve_ode_rk45(ode=lotka_volterra, 
+               x_0=np.array([10, 10]), 
+               t_0=0, 
+               h=0.1, 
+               h_tol=1.0e-8, 
+               args=[1.1, 0.4, 0.1, 0.4], 
+               phase=True,
+               iters=10000)
 

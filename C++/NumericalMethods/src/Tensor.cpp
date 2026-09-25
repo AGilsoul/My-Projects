@@ -1,16 +1,14 @@
-#include "Tensor.h"
+#include "../include/Tensor.h"
 
 using std::vector;
 using std::invalid_argument;
-
-
-// FIX ALL THIS
 
 namespace NumericalMethods
 {
     template <typename T, size_t Rank>
     Tensor<T, Rank>::Tensor(vector<int> dims): dims(dims)
     {
+        cout << "in here" << endl;
         // Make sure we receive the proper amount of dimensions.
         if (dims.size() != Rank)
         {
